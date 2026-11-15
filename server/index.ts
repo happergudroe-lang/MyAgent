@@ -84,7 +84,7 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
   else if(/\.(txt|md|csv|json|log)$/i.test(name)||['text/plain','text/markdown','text/csv','application/json'].includes(file.mimetype)){content=file.buffer.toString('utf8')}
   else return res.status(415).json({error:'当前支持 PDF、TXT、MD、CSV、JSON、LOG 文件。'})
   if(!content.trim())return res.status(422).json({error:'文件没有可读取的文本内容。'})
-  res.json({name:file.originalname,characters:content.length,content:content.slice(0,60000),truncated:content.length>60000})
+  res.json({name:file.originalname,characters:content.length,content:content.slice(0,10000),truncated:content.length>10000})
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
 app.post('/api/chat',async(req,res)=>{
