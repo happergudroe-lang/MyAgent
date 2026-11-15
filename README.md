@@ -73,3 +73,24 @@ The server currently exposes two low-risk tools to compatible models: `calculato
 - Agent tool loops are capped at six rounds. Tools are enabled per request from the workspace toggles.
 
 For web search, add `TAVILY_API_KEY` to `.env`. For file upload and PDF parsing, install dependencies with `npm install` before starting the server.
+
+
+## Accounts and private workspaces
+
+- Email + password registration and login are available.
+- Passwords are hashed with bcrypt (12 rounds); raw passwords are never stored.
+- Authentication uses an HttpOnly, SameSite=Lax session cookie with a 7-day expiry. Session tokens are stored as SHA-256 hashes in SQLite.
+- SQLite stores users, sessions and conversations. Conversations are scoped by both user ID and conversation ID, so accounts cannot read or overwrite each other's history.
+- The database is created automatically at server startup. Set `DATABASE_PATH` to choose its location; back up this file and keep it out of Git.
+- Chat, file upload and approval endpoints require authentication. Health, provider metadata and tool metadata remain public.
+- Registration validates email, username and password length. Use HTTPS in production and configure secure cookies by setting `NODE_ENV=production`.
+
+## First run
+
+1. Install Node.js 20 or newer.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env` and configure at least one model API key.
+4. Run `npm run dev`, then open `http://localhost:5173`.
+5. Register an account from the sign-in screen.
+
+This is still an early deployment baseline. Before exposing it publicly, add robust per-IP/account rate limiting, email verification, password reset, CSRF/origin protections, backups, monitoring and a managed production database. Do not expose the development server directly to the public internet.
