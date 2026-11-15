@@ -14,7 +14,7 @@ db.pragma('foreign_keys = ON')
 db.exec(`
  CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, username TEXT NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL, created_at TEXT NOT NULL);
- CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS conversations (id TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_id,id));
  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
  CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, updated_at DESC);
 `)
@@ -127,7 +127,7 @@ app.get('/api/tools',(_req,res)=>res.json({tools:[
 ]}))
 app.use('/api', (req,res,next)=>{if(['/api/health','/api/providers','/api/tools','/api/auth/register','/api/auth/login','/api/auth/me','/api/auth/logout'].includes(req.path))return next();return requireAuth(req as AuthRequest,res,next)})
 app.get('/api/chats',(req:AuthRequest,res)=>{const rows=db.prepare('SELECT id,title,data,updated_at FROM conversations WHERE user_id=? ORDER BY updated_at DESC').all(req.user!.id) as any[];res.json({chats:rows.map(x=>({id:x.id,title:x.title,data:JSON.parse(x.data),updatedAt:x.updated_at}))})})
-app.put('/api/chats/:id',(req:AuthRequest,res)=>{const id=String(req.params.id).slice(0,100),title=String(req.body?.title||'新的对话').slice(0,120),data=req.body?.data;if(!id||!Array.isArray(data)||data.length>500)return res.status(400).json({error:'会话数据格式无效。'});const updatedAt=new Date().toISOString();db.prepare('INSERT INTO conversations(id,user_id,title,data,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,data=excluded.data,updated_at=excluded.updated_at WHERE conversations.user_id=excluded.user_id').run(id,req.user!.id,title,JSON.stringify(data),updatedAt);res.json({ok:true,updatedAt})})
+app.put('/api/chats/:id',(req:AuthRequest,res)=>{const id=String(req.params.id).slice(0,100),title=String(req.body?.title||'新的对话').slice(0,120),data=req.body?.data;if(!id||!Array.isArray(data)||data.length>500)return res.status(400).json({error:'会话数据格式无效。'});const updatedAt=new Date().toISOString();db.prepare('INSERT INTO conversations(id,user_id,title,data,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,data=excluded.data,updated_at=excluded.updated_at').run(id,req.user!.id,title,JSON.stringify(data),updatedAt);res.json({ok:true,updatedAt})})
 app.delete('/api/chats/:id',(req:AuthRequest,res)=>{db.prepare('DELETE FROM conversations WHERE id=? AND user_id=?').run(req.params.id,req.user!.id);res.json({ok:true})})
 app.post('/api/approvals/:id',(req,res)=>{const resolve=pendingApprovals.get(req.params.id);if(!resolve)return res.status(404).json({error:'审批请求已过期或不存在。'});pendingApprovals.delete(req.params.id);resolve(req.body?.approved===true);res.json({ok:true})})
 app.post('/api/files',upload.single('file'),async(req,res)=>{
