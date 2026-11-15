@@ -7,6 +7,9 @@ A multi-provider AI Agent workspace. One chat UI, a unified model gateway, and s
 - React + TypeScript + Vite + Framer Motion
 - Express API server
 - Server-sent events (SSE) for incremental text generation
+- Browser-local conversation history and workspace preference persistence
+- Markdown, GFM tables/lists, and syntax-highlighted code blocks
+- Agent role instructions included in model context
 
 ## Supported providers
 
@@ -50,4 +53,4 @@ This is a development-stage gateway, not a production multi-user service. Before
 
 ## Current limitations
 
-Conversation persistence, user accounts, actual tool execution, file processing and production deployment are not implemented yet.
+Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, actual tool execution, file processing and production deployment are not implemented yet.
