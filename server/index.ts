@@ -7,6 +7,7 @@ import { randomUUID, createHash } from 'node:crypto'
 import Database from 'better-sqlite3'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from 'express-rate-limit'
+import path from 'node:path'
 
 const app = express()
 app.use(express.json({ limit: '100kb' }))
@@ -61,7 +62,7 @@ app.post('/api/auth/login',authLimiter,async(req,res)=>{
 app.get('/api/auth/me',requireAuth,(req:AuthRequest,res)=>res.json({user:req.user}))
 app.post('/api/auth/logout',requireAuth,(req:AuthRequest,res)=>{db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hashToken(readCookie(req,COOKIE)));clearSessionCookie(res);res.json({ok:true})})
 
-const port = Number(process.env.PORT || 3001))
+const port = Number(process.env.PORT || 3001)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
 type ProviderId = 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
 type ChatMessage = { role: string; content: any; tool_calls?: any[]; tool_call_id?: string; name?: string }
@@ -200,4 +201,6 @@ app.post('/api/chat',async(req,res)=>{
   sendEvent(res,'[DONE]')
  }catch(error){sendEvent(res,{error:error instanceof Error?error.message:'模型请求失败。'})}finally{res.end()}
 })
-app.listen(port,'127.0.0.1',()=>console.log('MyAgent API server listening on http://127.0.0.1:'+port))
+app.use(express.static(path.resolve(process.cwd(),'dist')))
+app.get('*',(req,res,next)=>{if(req.path.startsWith('/api/'))return next();res.sendFile(path.resolve(process.cwd(),'dist/index.html'))})
+app.listen(port,'0.0.0.0',()=>console.log('MyAgent server listening on 0.0.0.0:'+port))
