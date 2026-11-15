@@ -30,7 +30,7 @@ function runTool(name: string, rawArgs: string) {
     const expression = String(args.expression || '')
     if (!expression || expression.length > 160 || !/^[0-9+\-*/().,%\s^]+$/.test(expression)) return { ok: false, error: '只允许数字和基本数学运算符。' }
     try {
-      const result = evaluate(expression, {}, { predictable: true } as any)
+      const result = evaluate(expression)
       if (typeof result !== 'number' || !Number.isFinite(result)) return { ok: false, error: '表达式结果不是有限数字。' }
       return { ok: true, result }
     } catch { return { ok: false, error: '无法计算该表达式。' } }
@@ -99,14 +99,14 @@ app.post('/api/chat', async (req, res) => {
   try {
     let answer = ''
     if (isClaude) {
-      let history: ChatMessage[] = chatMessages
+      let history: any[] = chatMessages
       for (let step = 0; step < 5; step++) {
         const result = await executeClaude(history)
         const blocks = result.content || []
         const text = blocks.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
         const calls = blocks.filter((b: any) => b.type === 'tool_use')
         if (!calls.length) { answer = text; break }
-        history = [...history, { role: 'assistant', content: text || '[tool call]' } as ChatMessage]
+        history = [...history, { role: 'assistant', content: blocks }]
         const toolResults = []
         for (const call of calls) {
           sendEvent(res, { tool: { name: call.name, status: 'running', input: call.input } })
@@ -114,7 +114,7 @@ app.post('/api/chat', async (req, res) => {
           sendEvent(res, { tool: { name: call.name, status: 'completed', output } })
           toolResults.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(output) })
         }
-        history.push({ role: 'user', content: JSON.stringify(toolResults) })
+        history.push({ role: 'user', content: toolResults })
       }
     } else {
       let history = [...safeMessages]
