@@ -53,4 +53,9 @@ This is a development-stage gateway, not a production multi-user service. Before
 
 ## Current limitations
 
-Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, actual tool execution, file processing and production deployment are not implemented yet.
+Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, external web search, code sandbox execution, file processing and production deployment are not implemented yet.
+
+
+## Built-in Agent tools
+
+The server currently exposes two low-risk tools to compatible models: `calculator` (numeric arithmetic expressions only) and `get_current_time` (IANA timezone-aware time lookup). Tool execution is limited to enabled tools sent by the UI. The server caps each agent turn at five tool rounds. Arbitrary code execution, shell access, filesystem access and unrestricted web browsing are intentionally not exposed.
