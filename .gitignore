@@ -3,3 +3,8 @@ dist
 .env
 .env.local
 .DS_Store
+
+# Local SQLite database and WAL files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
