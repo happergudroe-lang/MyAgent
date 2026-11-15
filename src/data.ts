@@ -1,3 +1,3 @@
 export const agents = [{name:'智能助手',icon:'✧',description:'通用问答与任务协作'},{name:'编程助手',icon:'⌘',description:'代码编写、调试与重构'},{name:'创意大师',icon:'✳',description:'灵感、文案与视觉创作'},{name:'数据分析',icon:'▥',description:'数据洞察与报告'}]
 export const initialChats = [{id:1,title:'未来科技的畅想',group:'今天'},{id:2,title:'AI 与人类的未来',group:'今天'},{id:3,title:'代码优化建议',group:'今天'},{id:4,title:'旅行计划规划',group:'昨天'},{id:5,title:'项目开发讨论',group:'昨天'}]
-export const toolDefaults = [{id:'calculator',name:'计算器',icon:'calculator',enabled:true},{id:'get_current_time',name:'当前时间',icon:'clock',enabled:true}]
+export const toolDefaults = [{id:'calculator',name:'计算器',icon:'calculator',enabled:true},{id:'get_current_time',name:'当前时间',icon:'clock',enabled:true},{id:'web_search',name:'联网搜索',icon:'globe',enabled:false},{id:'run_code',name:'代码沙箱',icon:'code',enabled:false}]
