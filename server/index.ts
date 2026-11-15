@@ -18,6 +18,7 @@ const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required. Add the Supabase connection pooler URL in Vercel Environment Variables.')
 const db = new Pool({ connectionString: databaseUrl, max: Number(process.env.PG_POOL_MAX || 5), idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000, ...(process.env.NODE_ENV === 'production' ? { ssl: { rejectUnauthorized: false } } : {}) })
 const query = (text: string, values: unknown[] = []) => db.query(text, values)
+async function ensureWorkspaceSchema(){await query(`CREATE TABLE IF NOT EXISTS public.workspaces (id text primary key,user_id text not null references public.users(id) on delete cascade,name text not null,description text not null default '',created_at timestamptz not null default now())`);await query(`ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS workspace_id text`);await query(`CREATE INDEX IF NOT EXISTS idx_conversations_workspace ON public.conversations(user_id,workspace_id,updated_at desc)`) }
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
@@ -134,9 +135,12 @@ app.get('/api/tools',(_req,res)=>res.json({tools:[
  {id:'run_code',name:'代码沙箱',description:'Piston 远程隔离执行，执行前需要审批',enabled:!process.env.VERCEL,approval:true}
 ]}))
 app.use('/api', (req,res,next)=>{if(['/api/health','/api/providers','/api/tools','/api/auth/register','/api/auth/login','/api/auth/me','/api/auth/logout'].includes(req.path))return next();return requireAuth(req as AuthRequest,res,next)})
-app.get('/api/chats',async(req:AuthRequest,res)=>{try{const r=await query('SELECT id,title,data,updated_at FROM conversations WHERE user_id=$1 ORDER BY updated_at DESC',[req.user!.id]);res.json({chats:r.rows.map(x=>({id:x.id,title:x.title,data:x.data,updatedAt:x.updated_at}))})}catch{res.status(500).json({error:'读取会话失败。'})}})
-app.get('/api/chats/:id',async(req:AuthRequest,res)=>{try{const r=await query('SELECT id,title,data,updated_at FROM conversations WHERE id=$1 AND user_id=$2',[req.params.id,req.user!.id]);const row=r.rows[0];if(!row)return res.status(404).json({error:'会话不存在。'});res.json({chat:{id:row.id,title:row.title,data:row.data,updatedAt:row.updated_at}})}catch{res.status(500).json({error:'读取会话失败。'})}})
-app.put('/api/chats/:id',async(req:AuthRequest,res)=>{try{const id=String(req.params.id).slice(0,100),title=String(req.body?.title||'新的对话').slice(0,120),data=req.body?.data;if(!id||!Array.isArray(data)||data.length>500)return res.status(400).json({error:'会话数据格式无效。'});const updatedAt=new Date().toISOString();await query('INSERT INTO conversations(id,user_id,title,data,updated_at) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT(user_id,id) DO UPDATE SET title=EXCLUDED.title,data=EXCLUDED.data,updated_at=EXCLUDED.updated_at',[id,req.user!.id,title,JSON.stringify(data),updatedAt]);res.json({ok:true,updatedAt})}catch{res.status(500).json({error:'保存会话失败。'})}})
+app.get('/api/workspaces',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const r=await query('SELECT id,name,description,created_at FROM workspaces WHERE user_id=$1 ORDER BY created_at DESC',[req.user!.id]);res.json({workspaces:r.rows})}catch{res.status(500).json({error:'读取工作区失败。'})}})
+app.post('/api/workspaces',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const name=String(req.body?.name||'').trim().slice(0,60),description=String(req.body?.description||'').trim().slice(0,240);if(name.length<2)return res.status(400).json({error:'工作区名称至少需要 2 个字符。'});const id=randomUUID();const r=await query('INSERT INTO workspaces(id,user_id,name,description) VALUES($1,$2,$3,$4) RETURNING id,name,description,created_at',[id,req.user!.id,name,description]);res.status(201).json({workspace:r.rows[0]})}catch{res.status(500).json({error:'创建工作区失败。'})}})
+app.delete('/api/workspaces/:id',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const id=String(req.params.id);await query('UPDATE conversations SET workspace_id=NULL WHERE user_id=$1 AND workspace_id=$2',[req.user!.id,id]);await query('DELETE FROM workspaces WHERE id=$1 AND user_id=$2',[id,req.user!.id]);res.json({ok:true})}catch{res.status(500).json({error:'删除工作区失败。'})}})
+app.get('/api/chats',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const workspaceId=String(req.query.workspaceId||'');const r=workspaceId?await query('SELECT id,title,data,updated_at,workspace_id FROM conversations WHERE user_id=$1 AND workspace_id=$2 ORDER BY updated_at DESC',[req.user!.id,workspaceId]):await query('SELECT id,title,data,updated_at,workspace_id FROM conversations WHERE user_id=$1 ORDER BY updated_at DESC',[req.user!.id]);res.json({chats:r.rows.map(x=>({id:x.id,title:x.title,data:x.data,updatedAt:x.updated_at,workspaceId:x.workspace_id}))})}catch{res.status(500).json({error:'读取会话失败。'})}})
+app.get('/api/chats/:id',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const r=await query('SELECT id,title,data,updated_at,workspace_id FROM conversations WHERE id=$1 AND user_id=$2',[req.params.id,req.user!.id]);const row=r.rows[0];if(!row)return res.status(404).json({error:'会话不存在。'});res.json({chat:{id:row.id,title:row.title,data:row.data,updatedAt:row.updated_at,workspaceId:row.workspace_id}})}catch{res.status(500).json({error:'读取会话失败。'})}})
+app.put('/api/chats/:id',async(req:AuthRequest,res)=>{try{await ensureWorkspaceSchema();const id=String(req.params.id).slice(0,100),title=String(req.body?.title||'新的对话').slice(0,120),data=req.body?.data,workspaceId=req.body?.workspaceId?String(req.body.workspaceId):null;if(!id||!Array.isArray(data)||data.length>500)return res.status(400).json({error:'会话数据格式无效。'});if(workspaceId){const w=await query('SELECT id FROM workspaces WHERE id=$1 AND user_id=$2',[workspaceId,req.user!.id]);if(!w.rowCount)return res.status(404).json({error:'工作区不存在。'})}const updatedAt=new Date().toISOString();await query('INSERT INTO conversations(id,user_id,title,data,updated_at,workspace_id) VALUES($1,$2,$3,$4::jsonb,$5,$6) ON CONFLICT(user_id,id) DO UPDATE SET title=EXCLUDED.title,data=EXCLUDED.data,updated_at=EXCLUDED.updated_at,workspace_id=EXCLUDED.workspace_id',[id,req.user!.id,title,JSON.stringify(data),updatedAt,workspaceId]);res.json({ok:true,updatedAt})}catch{res.status(500).json({error:'保存会话失败。'})}})
 app.delete('/api/chats/:id',async(req:AuthRequest,res)=>{try{await query('DELETE FROM conversations WHERE id=$1 AND user_id=$2',[req.params.id,req.user!.id]);res.json({ok:true})}catch{res.status(500).json({error:'删除会话失败。'})}})
 app.post('/api/approvals/:id',(req,res)=>{const resolve=pendingApprovals.get(req.params.id);if(!resolve)return res.status(404).json({error:'审批请求已过期或不存在。'});pendingApprovals.delete(req.params.id);resolve(req.body?.approved===true);res.json({ok:true})})
 app.post('/api/files',upload.single('file'),async(req,res)=>{
@@ -153,11 +157,11 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
 app.post('/api/chat',chatLimiter,async(req,res)=>{
- const {messages,model,provider:requestedProvider,enabledTools=[]}=req.body??{}
+ const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey}=req.body??{}
  const providerId=(requestedProvider||'openai') as ProviderId
  const config=providers[providerId]
  if(!config)return res.status(400).json({error:'不支持的模型服务商。'})
- const apiKey=process.env[config.envKey]
+ const apiKey=(typeof sessionApiKey==='string'&&sessionApiKey.trim().length>0?sessionApiKey.trim():process.env[config.envKey])
  if(!apiKey)return res.status(503).json({error:config.label+' 尚未配置 API Key，请在服务端 .env 中填写 '+config.envKey+'。'})
  if(!Array.isArray(messages)||messages.length===0||messages.length>40)return res.status(400).json({error:'messages 必须是 1 到 40 条消息的数组。'})
  const safeMessages:ChatMessage[]=[]
@@ -184,7 +188,14 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
  const response=await fetch(baseUrl+'/v1/messages',{method:'POST',headers,body:JSON.stringify({model:selectedModel,max_tokens:4096,stream:false,...(systemText?{system:systemText}:{}),messages:history.filter(m=>m.role!=='system'),...(claudeTools.length?{tools:claudeTools}:{})})});if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'Claude 请求失败');return response.json()}
  try{
   let answer=''
-  if(isClaude){
+  if(!isClaude&&allowedTools.length===0){
+   const response=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:selectedModel,messages:safeMessages,stream:true})})
+   if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'模型请求失败')
+   if(!response.body)throw new Error('模型服务没有返回可读取的数据流')
+   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer=''
+   while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop()||'';for(const line of lines){if(!line.startsWith('data:'))continue;const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')continue;const chunk=JSON.parse(raw);const delta=chunk.choices?.[0]?.delta?.content;if(typeof delta==='string'&&delta){answer+=delta;sendEvent(res,{text:delta})}if(chunk.error)throw new Error(chunk.error.message||'模型流式生成失败')}} 
+   if(!answer)throw new Error('模型没有返回文本内容。')
+  }else if(isClaude){
    let history:any[]=chatMessages
    for(let step=0;step<6;step++){
     const result=await executeClaude(history);const blocks=result.content||[];const text=blocks.filter((b:any)=>b.type==='text').map((b:any)=>b.text).join('');const calls=blocks.filter((b:any)=>b.type==='tool_use')
@@ -203,7 +214,7 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
     for(const call of calls){const name=call.function?.name||'';const args=call.function?.arguments||'{}';sendEvent(res,{tool:{name,status:'running',input:args}});const output=await executeTool(name,args,res);sendEvent(res,{tool:{name,status:'completed',output}});history.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(output)})}
    }
   }
-  if(answer)sendEvent(res,{text:answer});else sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
+  if(answer&& (isClaude||allowedTools.length>0))sendEvent(res,{text:answer});else if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
   sendEvent(res,'[DONE]')
  }catch(error){sendEvent(res,{error:error instanceof Error?error.message:'模型请求失败。'})}finally{res.end()}
 })
