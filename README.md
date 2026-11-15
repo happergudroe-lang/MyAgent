@@ -7,7 +7,7 @@ A multi-provider AI Agent workspace. One chat UI, a unified model gateway, and s
 - React + TypeScript + Vite + Framer Motion
 - Express API server
 - Server-sent events (SSE) for incremental text generation
-- Browser-local conversation history and workspace preference persistence
+- SQLite-backed per-account conversation history and browser-local workspace preferences
 - Markdown, GFM tables/lists, and syntax-highlighted code blocks
 - Agent role instructions included in model context
 
@@ -50,13 +50,13 @@ Vite normally starts at http://localhost:5173 and proxies `/api` to the Express 
 - `POST /api/approvals/:id` — approve or reject a pending sandbox execution
 - `POST /api/chat` — Agent loop with streaming text, tool events and approval requests
 
-## Security before public deployment
+## Security baseline
 
-This is a development-stage gateway, not a production multi-user service. Before exposing it publicly, add authentication, per-user encrypted key storage, rate limiting and quotas, origin/CSRF protections, request validation, audit logging with secret redaction, and provider-specific timeout/cancellation handling. Do not commit `.env`.
+The current app includes bcrypt password hashing, HttpOnly session cookies, per-user conversation scoping, registration/login rate limits, chat IP rate limits, basic security headers, request-size limits and server-side provider secrets. It is suitable for a controlled test deployment after configuring HTTPS and a persistent database disk, but is not a fully hardened production service. Remaining work includes email verification, password reset, per-account quotas, CSRF/origin policy, audit logging, session management, and provider timeout/cancellation handling. Do not commit `.env`.
 
 ## Current limitations
 
-Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, database-backed cross-device sync and production deployment are not implemented yet.
+Accounts and conversation history are stored in SQLite on the server and can sync across devices when the same account is used. Workspace preferences (selected model, provider, enabled tools and selected Agent) remain browser-local. Uploaded files are parsed in memory and are not persisted. The included Render Blueprint uses a persistent disk for SQLite; the database is not an encrypted application-level vault.
 
 
 ## Built-in Agent tools
