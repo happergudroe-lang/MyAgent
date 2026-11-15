@@ -94,3 +94,18 @@ For web search, add `TAVILY_API_KEY` to `.env`. For file upload and PDF parsing,
 5. Register an account from the sign-in screen.
 
 This is still an early deployment baseline. Before exposing it publicly, add distributed per-IP/account rate limiting (the current login/register limiter is in-memory and single-process), email verification, password reset, CSRF/origin protections, backups, monitoring and a managed production database. Do not expose the development server directly to the public internet.
+
+
+## Public test deployment (Render)
+
+A Render Blueprint is included at `render.yaml`. It builds the Vite frontend and runs the Express API from one origin, with a persistent disk mounted at `/var/data` for SQLite. The persistent disk requires a paid Render web-service plan; do not remove it or use an ephemeral filesystem for user accounts. Render creates a public HTTPS URL after deployment.
+
+1. Push this repository to GitHub (the default branch is `main`).
+2. Open [Render Blueprint deployment](https://render.com/blueprint/new) and connect `happergudroe-lang/MyAgent`.
+3. Review the `myagent` service and its persistent disk. Select/confirm the Starter plan.
+4. Add at least one provider secret (for example `OPENAI_API_KEY`) in Render's environment settings. Never put keys in GitHub or frontend variables.
+5. Deploy. Wait for the health check at `/api/health` to pass, then share the generated `https://...` URL with testers.
+
+The public URL is created by Render during deployment; it cannot be pre-generated from this repository. Keep the provider key private: all testers use the configured server-side provider account and may consume its API quota. The included IP-based chat limiter is a basic test safeguard, not a per-user billing/quota system. Use test-only keys and set provider spending limits before inviting friends.
+
+Render persistent disks are single-instance storage. Back up `/var/data/myagent.sqlite` regularly. For larger production deployments, migrate to managed PostgreSQL and add email verification, password reset, per-user quotas, audit logs, and a stronger account-level abuse-prevention system.
