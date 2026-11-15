@@ -38,7 +38,7 @@ app.post('/api/auth/register',async(req,res)=>{
  const email=String(req.body?.email||'').trim().toLowerCase()
  const username=String(req.body?.username||'').trim()
  const password=String(req.body?.password||'')
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254)return res.status(400).json({error:'请输入有效的邮箱地址。'})
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return res.status(400).json({error:'请输入有效的邮箱地址。'})
  if(username.length<2||username.length>32)return res.status(400).json({error:'用户名需要为 2–32 个字符。'})
  if(password.length<10||password.length>128)return res.status(400).json({error:'密码长度需要为 10–128 位。'})
  if(db.prepare('SELECT id FROM users WHERE email=?').get(email))return res.status(409).json({error:'该邮箱已注册，请直接登录。'})
