@@ -39,7 +39,7 @@ app.post('/api/chat', async (req, res) => {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 40) {
     return res.status(400).json({ error: 'messages 必须是 1 到 40 条消息的数组。' })
   }
-  const safeMessages = []
+  const safeMessages: { role: string; content: string }[] = []
   for (const m of messages) {
     if (!['user', 'assistant', 'system'].includes(m?.role) || typeof m?.content !== 'string') {
       return res.status(400).json({ error: '消息格式无效。' })
