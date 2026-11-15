@@ -45,7 +45,10 @@ Vite normally starts at http://localhost:5173 and proxies `/api` to the Express 
 
 - `GET /api/health` — server health and configured provider count
 - `GET /api/providers` — provider list, available model IDs and configured status
-- `POST /api/chat` — streaming chat; request body includes `provider`, `model`, and `messages`
+- `GET /api/tools` — available tools and configuration status
+- `POST /api/files` — parse PDF/TXT/MD/CSV/JSON/LOG uploads (8 MB limit)
+- `POST /api/approvals/:id` — approve or reject a pending sandbox execution
+- `POST /api/chat` — Agent loop with streaming text, tool events and approval requests
 
 ## Security before public deployment
 
@@ -53,9 +56,20 @@ This is a development-stage gateway, not a production multi-user service. Before
 
 ## Current limitations
 
-Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, external web search, code sandbox execution, file processing and production deployment are not implemented yet.
+Conversation history is currently stored in the browser's localStorage on this device/browser; it is not synced between devices and is not encrypted as an application-level vault. User accounts, database-backed cross-device sync and production deployment are not implemented yet.
 
 
 ## Built-in Agent tools
 
 The server currently exposes two low-risk tools to compatible models: `calculator` (numeric arithmetic expressions only) and `get_current_time` (IANA timezone-aware time lookup). Tool execution is limited to enabled tools sent by the UI. The server caps each agent turn at five tool rounds. Arbitrary code execution, shell access, filesystem access and unrestricted web browsing are intentionally not exposed.
+
+
+## Agent tools and integrations
+
+- Calculator and timezone-aware current-time lookup are built in.
+- Web search uses Tavily. Set `TAVILY_API_KEY` in the server `.env`; without it the tool returns a clear configuration error.
+- PDF, TXT, Markdown, CSV, JSON and LOG uploads are parsed server-side in memory (8 MB maximum) and inserted into the current prompt context. Files are not persisted.
+- JavaScript and Python execution is sent to the Piston remote execution service. Every execution requires an explicit browser approval prompt and runs with a short timeout. Do not submit secrets or sensitive code to a third-party execution service.
+- Agent tool loops are capped at six rounds. Tools are enabled per request from the workspace toggles.
+
+For web search, add `TAVILY_API_KEY` to `.env`. For file upload and PDF parsing, install dependencies with `npm install` before starting the server.
