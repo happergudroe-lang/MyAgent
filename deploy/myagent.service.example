@@ -1,0 +1,22 @@
+[Unit]
+Description=MyAgent application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myagent
+Group=myagent
+WorkingDirectory=/opt/myagent
+EnvironmentFile=/etc/myagent/myagent.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/myagent
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
