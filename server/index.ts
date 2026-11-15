@@ -8,6 +8,7 @@ import Database from 'better-sqlite3'
 import bcrypt from 'bcryptjs'
 
 const app = express()
+app.use(express.json({ limit: '100kb' }))
 const db = new Database(process.env.DATABASE_PATH || './myagent.sqlite')
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
@@ -58,8 +59,7 @@ app.post('/api/auth/login',async(req,res)=>{
 app.get('/api/auth/me',requireAuth,(req:AuthRequest,res)=>res.json({user:req.user}))
 app.post('/api/auth/logout',requireAuth,(req:AuthRequest,res)=>{db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hashToken(readCookie(req,COOKIE)));clearSessionCookie(res);res.json({ok:true})})
 
-const port = Number(process.env.PORT || 3001)
-app.use(express.json({ limit: '100kb' }))
+const port = Number(process.env.PORT || 3001))
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
 type ProviderId = 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
 type ChatMessage = { role: string; content: any; tool_calls?: any[]; tool_call_id?: string; name?: string }
