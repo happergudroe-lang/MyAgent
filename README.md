@@ -109,3 +109,18 @@ A Render Blueprint is included at `render.yaml`. It builds the Vite frontend and
 The public URL is created by Render during deployment; it cannot be pre-generated from this repository. Keep the provider key private: all testers use the configured server-side provider account and may consume its API quota. The included IP-based chat limiter is a basic test safeguard, not a per-user billing/quota system. Use test-only keys and set provider spending limits before inviting friends.
 
 Render persistent disks are single-instance storage. Back up `/var/data/myagent.sqlite` regularly. For larger production deployments, migrate to managed PostgreSQL and add email verification, password reset, per-user quotas, audit logs, and a stronger account-level abuse-prevention system.
+
+
+## Oracle Cloud Always Free deployment
+
+An Ubuntu ARM64 deployment path is provided for OCI Ampere A1 Always Free resources. See [deploy/README-oracle.md](deploy/README-oracle.md) for the full console walkthrough, network rules, HTTPS setup, updates and SQLite backup guidance.
+
+Quick start on a fresh Ubuntu ARM64 VM:
+
+```bash
+git clone https://github.com/happergudroe-lang/MyAgent.git
+cd MyAgent
+sudo bash deploy/oracle-cloud-setup.sh
+```
+
+The bootstrap installs Node.js 22 and Nginx, builds the app, configures a systemd service and stores SQLite in `/var/lib/myagent`. Add provider credentials to `/etc/myagent/myagent.env` and restart with `sudo systemctl restart myagent`. Configure OCI ingress and HTTPS before public testing. Only provision resources labeled **Always Free Eligible**; Oracle may reclaim qualifying idle Always Free compute, and capacity is not guaranteed.
