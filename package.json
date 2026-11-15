@@ -44,5 +44,8 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/better-sqlite3": "^7.6.12",
     "@types/bcryptjs": "^2.4.6"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
