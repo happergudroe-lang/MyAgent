@@ -31,7 +31,9 @@
     "pdf-parse": "^1.1.1",
     "bcryptjs": "^2.4.3",
     "express-rate-limit": "^7.5.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "@uzen/kokoro-js": "^1.2.4",
+    "@huggingface/transformers": "^4.3.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
