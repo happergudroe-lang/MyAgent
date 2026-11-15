@@ -8,13 +8,16 @@ import Database from 'better-sqlite3'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from 'express-rate-limit'
 import path from 'node:path'
+import { mkdirSync } from 'node:fs'
 
 const app = express()
 app.disable('x-powered-by')
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
 app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');next()})
 app.use(express.json({ limit: '100kb' }))
-const db = new Database(process.env.DATABASE_PATH || './myagent.sqlite')
+const databasePath = process.env.DATABASE_PATH || './myagent.sqlite'
+mkdirSync(path.dirname(path.resolve(databasePath)), { recursive: true })
+const db = new Database(databasePath)
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 db.exec(`
