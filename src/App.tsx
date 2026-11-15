@@ -11,7 +11,8 @@ type Message = { id:number; role:'user'|'assistant'; text:string; time:string; a
 type Provider = { id:string; label:string; configured:boolean; models:string[] }
 export default function App() {
  const [authUser,setAuthUser]=useState<{id:string,email:string,username:string}|null>(null)
- const [authReady,setAuthReady]=useState(false)\n const [serverChatsReady,setServerChatsReady]=useState(false)
+ const [authReady,setAuthReady]=useState(false)
+ const [serverChatsReady,setServerChatsReady]=useState(false)
  const [authMode,setAuthMode]=useState<'login'|'register'>('login')
  const [authEmail,setAuthEmail]=useState('')
  const [authName,setAuthName]=useState('')
@@ -26,7 +27,8 @@ export default function App() {
  useEffect(()=>{if(!authUser)return;setServerChatsReady(false);fetch('/api/chats').then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(Array.isArray(d.chats)&&d.chats.length){const list=d.chats.map((c:any)=>({id:c.id,title:c.title,group:'今天'}));setChats(list);const first=d.chats[0];setChat(first.id);setMessages(first.data||[])}else{const id=authUser.id+'-'+Date.now();setChats([{id,title:'新的对话',group:'今天'}]);setChat(id);setMessages([])}}).catch(()=>{}).finally(()=>setServerChatsReady(true))},[authUser?.id])
  async function submitAuth(){setAuthBusy(true);setAuthError('');try{const endpoint=authMode==='register'?'/api/auth/register':'/api/auth/login';const body=authMode==='register'?{email:authEmail,username:authName,password:authPassword}:{email:authEmail,password:authPassword};const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error||'认证失败');setAuthUser(d.user);setAuthPassword('')}catch(e){setAuthError(e instanceof Error?e.message:'请求失败')}finally{setAuthBusy(false)}}
  async function logout(){await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{});setAuthUser(null);setChats([]);setMessages([]);setChat(0)}
- useEffect(()=>{localStorage.setItem('myagent:chats',JSON.stringify(chats))},[chats])\n useEffect(()=>{localStorage.setItem('myagent:agent',String(agent));localStorage.setItem('myagent:model',model);localStorage.setItem('myagent:provider',provider);localStorage.setItem('myagent:tools',JSON.stringify(tools))},[agent,model,provider,tools])
+ useEffect(()=>{localStorage.setItem('myagent:chats',JSON.stringify(chats))},[chats])
+ useEffect(()=>{localStorage.setItem('myagent:agent',String(agent));localStorage.setItem('myagent:model',model);localStorage.setItem('myagent:provider',provider);localStorage.setItem('myagent:tools',JSON.stringify(tools))},[agent,model,provider,tools])
  useEffect(()=>{if(!authUser||!authReady||!serverChatsReady||!chat)return;const current=chats.find((c:any)=>c.id===chat);fetch('/api/chats/'+encodeURIComponent(String(chat)),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:current?.title||'新的对话',data:messages})}).catch(()=>{})},[authUser?.id,authReady,serverChatsReady,chat,messages,chats])
  const currentProvider=providers.find(p=>p.id===provider)
  const visible=useMemo(()=>chats.filter(c=>c.title.toLowerCase().includes(search.toLowerCase())),[chats,search])
