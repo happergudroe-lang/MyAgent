@@ -124,3 +124,39 @@ sudo bash deploy/oracle-cloud-setup.sh
 ```
 
 The bootstrap installs Node.js 22 and Nginx, builds the app, configures a systemd service and stores SQLite in `/var/lib/myagent`. Add provider credentials to `/etc/myagent/myagent.env` and restart with `sudo systemctl restart myagent`. Configure OCI ingress and HTTPS before public testing. Only provision resources labeled **Always Free Eligible**; Oracle may reclaim qualifying idle Always Free compute, and capacity is not guaranteed.
+
+
+## Vercel + Supabase deployment (recommended)
+
+MyAgent can be deployed with a Vercel Hobby project and a Supabase Free database. The Vercel project serves the Vite frontend and runs the Express API as a serverless function. User accounts, sessions and chat history are stored in Supabase PostgreSQL.
+
+### 1. Create the Supabase database
+
+1. Create a project at https://supabase.com/dashboard.
+2. Open **SQL Editor** in the project dashboard.
+3. Paste and run the contents of [supabase/schema.sql](supabase/schema.sql).
+4. Open **Project Settings → Database → Connection string → Session pooler**.
+5. Copy the PostgreSQL connection URI. Use the pooler URL (usually port 6543), not a client-side/public URL.
+
+### 2. Configure Vercel
+
+1. Import `happergudroe-lang/MyAgent` from GitHub at https://vercel.com/new.
+2. Keep the project root as `./`. The repository's `vercel.json` configures the Vite build and API function.
+3. Add these Environment Variables in Vercel Project Settings → Environment Variables:
+   - `DATABASE_URL`: the Supabase Session Pooler connection URI.
+   - At least one model key, for example `OPENAI_API_KEY` or `DEEPSEEK_API_KEY`.
+   - Optional: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `QWEN_API_KEY`, `CUSTOM_API_KEY`, `CUSTOM_BASE_URL`, `CUSTOM_MODELS`, `TAVILY_API_KEY`.
+4. Deploy. Vercel assigns the public HTTPS URL after the deployment succeeds.
+
+Do not add database credentials or model keys to variables prefixed with `VITE_`; those would be exposed to browsers. Never commit real credentials to GitHub.
+
+### Runtime notes and limitations
+
+- The API uses the Supabase PostgreSQL connection pooler through the server-only `DATABASE_URL`.
+- The SQL schema enables Row Level Security and intentionally defines no public policies. The app accesses tables only through its server-side database connection.
+- Passwords are bcrypt-hashed; session tokens are stored as SHA-256 hashes; chat records are scoped by user ID.
+- The Piston code-execution approval tool is disabled on Vercel because in-memory approval state is not reliable across separate serverless invocations. It remains available in the traditional long-running Node server mode.
+- Vercel Hobby function duration and usage limits apply. Long-running model responses may time out; test the selected provider and model before inviting others.
+- Supabase Free projects can pause after inactivity and have plan-specific storage/compute limits. Export or back up important data regularly.
+- The Vercel Hobby plan is intended for personal, non-commercial use. Check current provider terms and quotas before public or commercial use.
+- Local development also requires `DATABASE_URL` in a local `.env` file. Start with `npm run dev`.
