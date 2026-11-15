@@ -6,6 +6,7 @@ import { evaluate } from 'mathjs'
 import { randomUUID, createHash } from 'node:crypto'
 import Database from 'better-sqlite3'
 import bcrypt from 'bcryptjs'
+import { rateLimit } from 'express-rate-limit'
 
 const app = express()
 app.use(express.json({ limit: '100kb' }))
@@ -21,6 +22,7 @@ db.exec(`
 `)
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
+const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
 function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
 function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
 function clearSessionCookie(res:express.Response){res.setHeader('Set-Cookie',COOKIE+'=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'+(process.env.NODE_ENV==='production'?'; Secure':''))}
@@ -34,7 +36,7 @@ function requireAuth(req:AuthRequest,res:express.Response,next:express.NextFunct
  if(!user){clearSessionCookie(res);return res.status(401).json({error:'账号不存在，请重新登录。'})}
  req.user=user;next()
 }
-app.post('/api/auth/register',async(req,res)=>{
+app.post('/api/auth/register',authLimiter,async(req,res)=>{
  const email=String(req.body?.email||'').trim().toLowerCase()
  const username=String(req.body?.username||'').trim()
  const password=String(req.body?.password||'')
@@ -48,7 +50,7 @@ app.post('/api/auth/register',async(req,res)=>{
  db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').run(hashToken(token),id,Date.now()+7*86400000,new Date().toISOString())
  setSessionCookie(res,token);res.status(201).json({user:{id,email,username}})
 })
-app.post('/api/auth/login',async(req,res)=>{
+app.post('/api/auth/login',authLimiter,async(req,res)=>{
  const email=String(req.body?.email||'').trim().toLowerCase(),password=String(req.body?.password||'')
  const user=db.prepare('SELECT id,email,username,password_hash FROM users WHERE email=?').get(email) as any
  if(!user||!(await bcrypt.compare(password,user.password_hash)))return res.status(401).json({error:'邮箱或密码不正确。'})
