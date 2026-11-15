@@ -10,6 +10,9 @@ import { rateLimit } from 'express-rate-limit'
 import path from 'node:path'
 
 const app = express()
+app.disable('x-powered-by')
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
+app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');next()})
 app.use(express.json({ limit: '100kb' }))
 const db = new Database(process.env.DATABASE_PATH || './myagent.sqlite')
 db.pragma('journal_mode = WAL')
@@ -24,6 +27,7 @@ db.exec(`
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
+const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})
 function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
 function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
 function clearSessionCookie(res:express.Response){res.setHeader('Set-Cookie',COOKIE+'=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'+(process.env.NODE_ENV==='production'?'; Secure':''))}
@@ -146,7 +150,7 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
   res.json({name:file.originalname,characters:content.length,content:content.slice(0,10000),truncated:content.length>10000})
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
-app.post('/api/chat',async(req,res)=>{
+app.post('/api/chat',chatLimiter,async(req,res)=>{
  const {messages,model,provider:requestedProvider,enabledTools=[]}=req.body??{}
  const providerId=(requestedProvider||'openai') as ProviderId
  const config=providers[providerId]
