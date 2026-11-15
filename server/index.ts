@@ -3,9 +3,61 @@ import express from 'express'
 import multer from 'multer'
 import pdfParse from 'pdf-parse'
 import { evaluate } from 'mathjs'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+import Database from 'better-sqlite3'
+import bcrypt from 'bcryptjs'
 
 const app = express()
+const db = new Database(process.env.DATABASE_PATH || './myagent.sqlite')
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
+db.exec(`
+ CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, username TEXT NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL, created_at TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+ CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, updated_at DESC);
+`)
+const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
+const COOKIE='myagent_session'
+function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
+function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
+function clearSessionCookie(res:express.Response){res.setHeader('Set-Cookie',COOKIE+'=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'+(process.env.NODE_ENV==='production'?'; Secure':''))}
+type AuthRequest=express.Request & {user?:{id:string,email:string,username:string}}
+function requireAuth(req:AuthRequest,res:express.Response,next:express.NextFunction){
+ const token=readCookie(req,COOKIE)
+ if(!token)return res.status(401).json({error:'请先登录。'})
+ const session=db.prepare('SELECT user_id, expires_at FROM sessions WHERE token_hash=?').get(hashToken(token)) as {user_id:string,expires_at:number}|undefined
+ if(!session||session.expires_at<Date.now()){if(session)db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hashToken(token));clearSessionCookie(res);return res.status(401).json({error:'登录已过期，请重新登录。'})}
+ const user=db.prepare('SELECT id,email,username FROM users WHERE id=?').get(session.user_id) as {id:string,email:string,username:string}|undefined
+ if(!user){clearSessionCookie(res);return res.status(401).json({error:'账号不存在，请重新登录。'})}
+ req.user=user;next()
+}
+app.post('/api/auth/register',async(req,res)=>{
+ const email=String(req.body?.email||'').trim().toLowerCase()
+ const username=String(req.body?.username||'').trim()
+ const password=String(req.body?.password||'')
+ if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254)return res.status(400).json({error:'请输入有效的邮箱地址。'})
+ if(username.length<2||username.length>32)return res.status(400).json({error:'用户名需要为 2–32 个字符。'})
+ if(password.length<10||password.length>128)return res.status(400).json({error:'密码长度需要为 10–128 位。'})
+ if(db.prepare('SELECT id FROM users WHERE email=?').get(email))return res.status(409).json({error:'该邮箱已注册，请直接登录。'})
+ const id=randomUUID(), passwordHash=await bcrypt.hash(password,12)
+ db.prepare('INSERT INTO users(id,email,username,password_hash,created_at) VALUES(?,?,?,?,?)').run(id,email,username,passwordHash,new Date().toISOString())
+ const token=randomUUID()+randomUUID()
+ db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').run(hashToken(token),id,Date.now()+7*86400000,new Date().toISOString())
+ setSessionCookie(res,token);res.status(201).json({user:{id,email,username}})
+})
+app.post('/api/auth/login',async(req,res)=>{
+ const email=String(req.body?.email||'').trim().toLowerCase(),password=String(req.body?.password||'')
+ const user=db.prepare('SELECT id,email,username,password_hash FROM users WHERE email=?').get(email) as any
+ if(!user||!(await bcrypt.compare(password,user.password_hash)))return res.status(401).json({error:'邮箱或密码不正确。'})
+ const token=randomUUID()+randomUUID()
+ db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').run(hashToken(token),user.id,Date.now()+7*86400000,new Date().toISOString())
+ setSessionCookie(res,token);res.json({user:{id:user.id,email:user.email,username:user.username}})
+})
+app.get('/api/auth/me',requireAuth,(req:AuthRequest,res)=>res.json({user:req.user}))
+app.post('/api/auth/logout',requireAuth,(req:AuthRequest,res)=>{db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hashToken(readCookie(req,COOKIE)));clearSessionCookie(res);res.json({ok:true})})
+
 const port = Number(process.env.PORT || 3001)
 app.use(express.json({ limit: '100kb' }))
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
@@ -73,6 +125,10 @@ app.get('/api/tools',(_req,res)=>res.json({tools:[
  {id:'web_search',name:'联网搜索',description:'Tavily 实时网页搜索',enabled:Boolean(process.env.TAVILY_API_KEY),approval:false},
  {id:'run_code',name:'代码沙箱',description:'Piston 远程隔离执行，执行前需要审批',enabled:true,approval:true}
 ]}))
+app.use('/api', (req,res,next)=>{if(['/api/health','/api/providers','/api/tools','/api/auth/register','/api/auth/login','/api/auth/me','/api/auth/logout'].includes(req.path))return next();return requireAuth(req as AuthRequest,res,next)})
+app.get('/api/chats',(req:AuthRequest,res)=>{const rows=db.prepare('SELECT id,title,data,updated_at FROM conversations WHERE user_id=? ORDER BY updated_at DESC').all(req.user!.id) as any[];res.json({chats:rows.map(x=>({id:x.id,title:x.title,data:JSON.parse(x.data),updatedAt:x.updated_at}))})})
+app.put('/api/chats/:id',(req:AuthRequest,res)=>{const id=String(req.params.id).slice(0,100),title=String(req.body?.title||'新的对话').slice(0,120),data=req.body?.data;if(!id||!Array.isArray(data)||data.length>500)return res.status(400).json({error:'会话数据格式无效。'});const updatedAt=new Date().toISOString();db.prepare('INSERT INTO conversations(id,user_id,title,data,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,data=excluded.data,updated_at=excluded.updated_at WHERE conversations.user_id=excluded.user_id').run(id,req.user!.id,title,JSON.stringify(data),updatedAt);res.json({ok:true,updatedAt})})
+app.delete('/api/chats/:id',(req:AuthRequest,res)=>{db.prepare('DELETE FROM conversations WHERE id=? AND user_id=?').run(req.params.id,req.user!.id);res.json({ok:true})})
 app.post('/api/approvals/:id',(req,res)=>{const resolve=pendingApprovals.get(req.params.id);if(!resolve)return res.status(404).json({error:'审批请求已过期或不存在。'});pendingApprovals.delete(req.params.id);resolve(req.body?.approved===true);res.json({ok:true})})
 app.post('/api/files',upload.single('file'),async(req,res)=>{
  const file=req.file
