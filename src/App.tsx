@@ -9,7 +9,7 @@ import 'highlight.js/styles/github-dark.css'
 
 type Message = { id:number; role:'user'|'assistant'; text:string; time:string; activity?:string[]; elapsedMs?:number }
 type Provider = { id:string; label:string; configured:boolean; models:string[] }
-type Chat = { id:string; title:string; group:string; workspaceId?:string|null; updatedAt?:string }
+type Chat = { id:string; title:string; group:string; workspaceId?:string|null; updatedAt?:string; data?:Message[] }
 type Workspace = { id:string; name:string; description:string; created_at?:string }
 type AgentInfo = {name:string;icon:string;description:string;category:string;tags:string[];prompt:string}
 const agentCatalog:AgentInfo[] = [
@@ -194,7 +194,4 @@ export default function App() {
   {toast&&<div className="app-toast" role="status">{toast}</div>}
  </div>
 }
-const forty= fortyBars()
-function fortyBars(){return  fortyArray()}
-function fortyArray(){return Array.from({length: fortyCount},(_,i)=>i)}
-const fortyCount=48
+const forty=Array.from({length:48},(_,i)=>i)
