@@ -13,3 +13,57 @@
 @media(max-width:760px){.sidebar{position:absolute;left:0;top:0;bottom:0;width:270px;box-shadow:16px 0 45px #0002}.topbar{padding:0 12px 0 56px}.chat-stage{padding:0 16px}.home-stage{padding:20px 0}.home-copy h1{font-size:29px}.starter-grid{gap:9px}.starter-card{min-height:120px;padding:13px}.messages{padding-top:22px}.key-fields{grid-template-columns:1fr 1fr}.key-input-label{grid-column:span 2}.workspace-create{grid-template-columns:1fr 1fr}.workspace-create .primary-action{grid-column:span 2}.modal-window.wide{width:min(100%,650px)}}
 @media(max-width:520px){.app-shell{min-height:520px}.topbar{height:55px;flex-basis:55px}.topbar-title{font-size:12px}.quiet-button{font-size:0;width:36px;justify-content:center;padding:0}.quiet-button svg{width:17px}.chat-stage{padding:0 10px}.home-stage{justify-content:flex-start;padding-top:60px}.home-copy{margin-bottom:23px}.home-copy h1{font-size:26px}.home-copy p{font-size:14px}.starter-grid{grid-template-columns:1fr}.starter-card{min-height:95px}.home-bottom{margin-top:22px}.home-agent-list{gap:6px}.home-agent-list button{font-size:11px}.messages{gap:21px}.markdown-body{font-size:15px}.composer-wrap{padding:8px 0 10px}.composer{padding:10px;border-radius:16px}.composer textarea{font-size:15px;min-height:49px}.composer-tools{gap:2px}.composer-tools button{height:32px;font-size:11px;padding:0 6px}.composer-tools button:nth-child(2),.composer-tools button:nth-child(3){display:none}.send-btn{width:36px;height:36px;flex-basis:36px}.key-fields{grid-template-columns:1fr}.key-input-label{grid-column:auto}.modal-backdrop{padding:10px}.modal-window{max-height:92dvh;border-radius:18px}.modal-header{padding:19px 17px 14px}.modal-header h2{font-size:20px}.modal-body{padding:15px}.agent-market-grid,.skills-grid{grid-template-columns:1fr}.market-agent-card{min-height:195px}.workspace-create{grid-template-columns:1fr}.workspace-create .primary-action{grid-column:auto}.provider-list{grid-template-columns:1fr}.voice-header{height:58px;padding:0 14px}.voice-center h2{font-size:21px}.voice-wave{height:85px;margin-bottom:22px}.voice-speakers{gap:7px}.voice-speakers button{min-width:0;flex:1;padding:6px}.voice-footnote{font-size:9px}.auth-screen{padding:16px}.auth-card{padding:28px 21px;border-radius:16px}.auth-card h1{font-size:27px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+
+/* Focused layout refinement */
+.home-stage{width:min(100%,820px);padding:38px 0 32px}
+.home-copy{width:min(100%,720px);margin-bottom:34px}
+.home-copy h1{font-size:clamp(32px,3.2vw,40px);line-height:1.18;letter-spacing:-1.35px}
+.home-copy p{font-size:17px;line-height:1.75}
+.starter-grid{width:min(100%,720px);gap:14px}
+.starter-card{min-height:132px;padding:19px;border-radius:17px}
+.starter-card b{font-size:16px}
+.starter-card small{font-size:14px;line-height:1.6}
+.composer-wrap{width:min(100%,980px)}
+.composer{padding:14px 16px 12px;border-radius:21px}
+.composer-tools{gap:7px}
+.composer-tools button{font-size:14px;height:36px;padding:0 10px}
+.agent-select-wrap{height:36px;display:inline-flex;align-items:center;gap:7px;padding:0 10px;border:1px solid #e4e4e4;border-radius:10px;background:#f7f7f7;color:#444;position:relative}
+.agent-select-wrap>span{font-size:16px;line-height:1}
+.agent-select{appearance:none;border:0;outline:0;background:transparent;color:#333;font-size:13px;font-weight:600;min-width:72px;max-width:118px;padding:0 14px 0 0;cursor:pointer}
+.agent-select-wrap>svg{position:absolute;right:8px;pointer-events:none;color:#888}
+.agent-select option{font-size:14px}
+.modal-window:has(.settings-body){width:min(100%,900px)}
+.settings-body{gap:24px;padding:23px 26px 28px}
+.settings-section h3{font-size:17px;margin-bottom:7px}
+.settings-section>p{font-size:14px;line-height:1.65;margin-bottom:14px}
+.provider-card{min-height:66px;border-radius:12px;padding:11px 13px}
+.provider-card b{font-size:14px}
+.provider-card small{font-size:12px}
+.provider-state{font-size:11px}
+.settings-tool{min-height:59px}
+.settings-tool b{font-size:14px}
+.settings-tool small{font-size:12px}
+.skill-settings-search{height:40px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid #e4e4e4;border-radius:11px;color:#888;margin:0 0 13px;background:#fff}
+.skill-settings-search input{border:0;outline:0;flex:1;min-width:0;background:transparent;color:#333;font-size:14px}
+.github-skills-section .skills-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.github-skills-section .skill-card{padding:16px;border-radius:14px}
+.github-skills-section .skill-card h3{font-size:16px}
+.github-skills-section .skill-card p{font-size:13px;line-height:1.6;min-height:42px}
+.github-skills-section .skill-source{font-size:11px}
+.github-skills-section .skill-command code{font-size:11px}
+.github-skills-section .skill-actions .primary-action{font-size:12px}
+.settings-tip{font-size:13px;padding:13px 15px}
+@media(max-width:760px){
+ .home-stage{padding:28px 0 20px}
+ .home-copy h1{font-size:30px}
+ .home-copy p{font-size:15px}
+ .starter-grid{grid-template-columns:1fr}
+ .starter-card{min-height:98px}
+ .github-skills-section .skills-grid{grid-template-columns:1fr}
+ .settings-body{padding:18px}
+ .provider-list{grid-template-columns:1fr}
+ .composer-tools{gap:3px}
+ .composer-tools button{font-size:12px;padding:0 7px}
+ .agent-select{max-width:92px;font-size:12px}
+}
