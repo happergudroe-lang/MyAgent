@@ -93,4 +93,4 @@ For web search, add `TAVILY_API_KEY` to `.env`. For file upload and PDF parsing,
 4. Run `npm run dev`, then open `http://localhost:5173`.
 5. Register an account from the sign-in screen.
 
-This is still an early deployment baseline. Before exposing it publicly, add robust per-IP/account rate limiting, email verification, password reset, CSRF/origin protections, backups, monitoring and a managed production database. Do not expose the development server directly to the public internet.
+This is still an early deployment baseline. Before exposing it publicly, add distributed per-IP/account rate limiting (the current login/register limiter is in-memory and single-process), email verification, password reset, CSRF/origin protections, backups, monitoring and a managed production database. Do not expose the development server directly to the public internet.
