@@ -666,3 +666,6 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .command-palette kbd{padding:3px 6px;border:1px solid var(--panel-border);border-radius:5px;color:var(--panel-subtle);font:10px ui-monospace,monospace}
 .message-row.assistant .message-content{width:calc(100% - 35px);max-width:72ch;flex:1}
 @media(max-width:640px){.sidebar{min-width:240px;max-width:82vw}.topbar-title-edit{max-width:45vw}.top-actions .icon-btn{width:30px;height:30px}.composer-drop-active:after{inset:6px}}
+
+.sidebar{width:var(--myagent-left-width,270px);flex-basis:var(--myagent-left-width,270px)}
+.workbench-shell{width:var(--myagent-right-width,360px);flex-basis:var(--myagent-right-width,360px)}
