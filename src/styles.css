@@ -892,3 +892,19 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
  .app-shell,.app-shell *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
  .unslop-starters .starter-card:hover{transform:none}
 }
+
+/* Final cleanup: remove decorative gradients, saturated status colors and excess elevation */
+.auth-screen{background:var(--ink-page,#f5f7fa)!important;background-image:none!important}
+.auth-card{background:var(--ink-card,#fff);border:1px solid var(--panel-border,rgba(17,24,39,.08));box-shadow:none!important;border-radius:16px}
+.provider-card.active{background:var(--ink-card)!important;background-image:none!important;border-color:var(--panel-border)!important;box-shadow:none!important}
+.my-model-config,.workspace-create-panel{background:var(--ink-card)!important;background-image:none!important;box-shadow:none!important;border-color:var(--panel-border)!important;border-radius:14px}
+.thinking-skeleton i{background:var(--ink-raised)!important;background-image:none!important;animation:myagent-skeleton-pulse 1.3s ease-in-out infinite}
+@keyframes myagent-skeleton-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+.markdown-body a{color:inherit;text-decoration:underline;text-decoration-color:var(--panel-border);text-underline-offset:3px}
+.about-mark-letter{display:grid;place-items:center;font-size:22px;font-weight:500;letter-spacing:-1px}
+.app-shell .provider-state.ready{color:var(--ink-weak)!important}
+.app-shell .provider-state:not(.ready){color:var(--ink-weak)!important}
+.app-shell .starter-card,.app-shell .work-pane,.app-shell .composer,.app-shell .modal-window{box-shadow:none!important}
+.app-shell .starter-card:hover{box-shadow:none!important}
+.app-shell .tool-activity,.app-shell .command-palette>button{box-shadow:none!important}
+@media(prefers-reduced-motion:reduce){.thinking-skeleton i{animation:none;opacity:.75}}
