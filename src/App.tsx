@@ -160,7 +160,6 @@ export default function App() {
  const [pendingAttachment,setPendingAttachment]=useState<{name:string;content:string}|null>(null)
  const attachmentPreviewsRef=useRef<Record<string,{content:string;src?:string}>>({})
  const [messageFeedback,setMessageFeedback]=useState<Record<number,'up'|'down'>>({})
- const [pendingAttachment,setPendingAttachment]=useState<{name:string;content:string}|null>(null)\n const attachmentPreviewsRef=useRef<Record<string,{content:string;src?:string}>>({})
  const abortControllerRef=useRef<AbortController|null>(null)
  const resolvedTheme=themeMode==='system'?(systemDark?'dark':'light'):themeMode
 
