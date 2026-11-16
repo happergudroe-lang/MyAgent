@@ -13,7 +13,7 @@ const app = express()
 app.disable('x-powered-by')
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
 app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Permissions-Policy','camera=(), microphone=(self), geolocation=()');next()})
-app.use(express.json({ limit: '100kb' }))
+app.use(express.json({ limit: '5mb' }))
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required. Add the Supabase connection pooler URL in Vercel Environment Variables.')
 const db = new Pool({ connectionString: databaseUrl, max: Number(process.env.PG_POOL_MAX || 5), idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000, ...(process.env.NODE_ENV === 'production' ? { ssl: { rejectUnauthorized: false } } : {}) })
@@ -23,7 +23,7 @@ async function ensureWorkspaceSchema(){await query(`CREATE TABLE IF NOT EXISTS p
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
-const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})
+const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})\nconst externalApiLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',legacyHeaders:false,message:{error:{message:'Rate limit exceeded.',type:'rate_limit_error'}}})
 function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
 function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
 function clearSessionCookie(res:express.Response){res.setHeader('Set-Cookie',COOKIE+'=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'+(process.env.NODE_ENV==='production'?'; Secure':''))}
@@ -170,15 +170,15 @@ function requireExternalApiKey(req:express.Request,res:express.Response,next:exp
  if(!supplied||supplied!==expected)return res.status(401).json({error:{message:'Invalid API key.',type:'authentication_error'}})
  next()
 }
-app.get('/v1/models',requireExternalApiKey,(_req,res)=>res.json({object:'list',data:[{id:process.env.MY_MODEL||'myrqvia',object:'model',created:0,owned_by:'myagent'}]}))
-app.post('/v1/chat/completions',requireExternalApiKey,async(req,res)=>{
+app.get('/v1/models',externalApiLimiter,requireExternalApiKey,(_req,res)=>res.json({object:'list',data:[{id:process.env.MY_MODEL||'myrqvia',object:'model',created:0,owned_by:'myagent'}]}))
+app.post('/v1/chat/completions',externalApiLimiter,requireExternalApiKey,async(req,res)=>{
  const baseUrl=String(process.env.MY_BASE_URL||'').replace(/\/$/,'')
  const apiKey=process.env.MY_API_KEY||''
  if(!baseUrl||!apiKey)return res.status(503).json({error:{message:'Hosted model is not configured.',type:'api_error'}})
  const body={...(req.body||{}),model:String(req.body?.model||process.env.MY_MODEL||'myrqvia')}
  try{const upstream=await fetch(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify(body)});res.status(upstream.status);res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json');res.setHeader('Cache-Control','no-cache, no-transform');if(!upstream.body)return res.end();const reader=upstream.body.getReader();while(true){const {value,done}=await reader.read();if(done)break;if(!res.write(value))await new Promise<void>(resolve=>res.once('drain',resolve))}res.end()}catch(error){console.error('[MyAgent] External chat proxy failed:',error instanceof Error?error.message:'unknown');if(!res.headersSent)res.status(502).json({error:{message:'Upstream model is temporarily unavailable.',type:'api_error'}});else res.end()}
 })
-app.post('/v1/completions',requireExternalApiKey,async(req,res)=>{
+app.post('/v1/completions',externalApiLimiter,requireExternalApiKey,async(req,res)=>{
  const baseUrl=String(process.env.MY_BASE_URL||'').replace(/\/$/,'')
  const apiKey=process.env.MY_API_KEY||''
  if(!baseUrl||!apiKey)return res.status(503).json({error:{message:'Hosted model is not configured.',type:'api_error'}})
