@@ -456,3 +456,5 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 
 .messages{height:100%;width:100%;min-height:0;overflow:hidden;display:block;padding:0;gap:0}
 .messages [data-testid=virtuoso-scroller]{overflow-y:auto!important;padding:34px 0 28px;scroll-behavior:auto}
+
+.messages [data-testid=virtuoso-item-list]{display:flex;flex-direction:column;gap:27px;max-width:900px;margin:0 auto}
