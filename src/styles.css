@@ -231,3 +231,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .sidebar-nav-caption{padding:13px 16px 4px;color:#a0a7b1;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .sidebar-workspace-section{border-bottom:0;padding-bottom:10px}
 @media(max-width:760px){.sidebar-nav-caption{padding-top:10px}}
+
+
+/* Streaming chat polish and follow-latest affordance */
+.messages{overscroll-behavior:contain;scrollbar-gutter:stable;overflow-anchor:none}
+.streaming-text{white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.5em;line-height:1.82;color:#30343b}
+.streaming-text:after{content:"";display:inline-block;width:2px;height:1em;margin-left:3px;vertical-align:-.12em;border-radius:2px;background:#8793a3;animation:stream-caret 1s steps(2,end) infinite}
+.jump-latest{position:absolute;z-index:4;left:50%;bottom:116px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #e1e5eb;border-radius:999px;background:rgba(255,255,255,.96);color:#465366;font-size:12px;font-weight:600;box-shadow:0 5px 20px rgba(24,35,50,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.jump-latest:hover{background:#f5f7fa;border-color:#cbd3de}
+.jump-latest svg{width:15px;height:15px}
+@keyframes stream-caret{0%,48%{opacity:1}50%,100%{opacity:0}}
+@media(max-width:760px){.jump-latest{bottom:105px}}
+@media(prefers-reduced-motion:reduce){.streaming-text:after{animation:none;opacity:1}}
