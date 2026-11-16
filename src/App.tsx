@@ -45,9 +45,9 @@ function CodeFrame({children}:any){
  const [lineNumbers,setLineNumbers]=useState(false)
  const node=isValidElement(children)?children:null
  const props=(node?.props||{}) as any
- const source=String(props.children??'').replace(/\\n$/,'')
- const language=String(props.className||'').match(/language-([\\w-]+)/)?.[1]||'代码'
- const lines=source.split('\\n')
+ const toText=(value:any):string=>Array.isArray(value)?value.map(toText).join(''):typeof value==='string'||typeof value==='number'?String(value):value?.props?.children!==undefined?toText(value.props.children):'';const source=toText(props.children).replace(/\n$/,'')
+ const language=String(props.className||'').match(/language-([\w-]+)/)?.[1]||'代码'
+ const lines=source.split('\n')
  return <section className="code-frame"><header className="code-toolbar"><span className="code-language">{language}</span><span className="code-toolbar-actions"><button type="button" onClick={()=>setLineNumbers(v=>!v)} title="切换行号">{lineNumbers?'隐藏行号':'显示行号'}</button><button type="button" onClick={()=>void navigator.clipboard.writeText(source)} title="复制代码"><Copy size={13}/>复制</button></span></header><div className="code-scroll">{lineNumbers&&<div className="code-line-numbers" aria-hidden="true">{lines.map((_,i)=><span key={i}>{i+1}</span>)}</div>}<pre>{node?cloneElement(node as any,{className:props.className}):<code>{source}</code>}</pre></div></section>
 }
 \ntype WorkPaneKind = 'notes' | 'code' | 'terminal' | 'file' | 'image'
