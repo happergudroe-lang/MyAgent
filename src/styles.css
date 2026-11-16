@@ -486,3 +486,59 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .stream-cursor{display:inline-block;margin-left:2px;font-weight:500;opacity:1;animation:myagent-cursor-blink 1s steps(2,start) infinite;color:currentColor}
 @keyframes myagent-cursor-blink{to{visibility:hidden}}
 @media(prefers-reduced-motion:reduce){.stream-cursor{animation:none;opacity:1}}
+
+
+/* Reference-style compact single-card composer */
+.composer-wrap{width:min(100%,820px);max-width:820px;margin:0 auto;padding:10px 0 13px;position:relative;z-index:4}
+.composer{border:1px solid var(--line,#e3e6eb);border-radius:17px;background:var(--surface,#fff);padding:14px 15px 12px;box-shadow:0 3px 14px rgba(15,23,42,.055);transition:border-color .15s ease,box-shadow .15s ease}
+.composer:focus-within{border-color:color-mix(in srgb,var(--text,#252a33) 24%,var(--line,#e3e6eb));box-shadow:0 3px 14px rgba(15,23,42,.06)}
+.composer textarea{display:block;width:100%;min-height:32px;max-height:224px;resize:none;overflow-y:hidden;border:0;outline:0;background:transparent;color:var(--text,#252a33);font-size:15px;line-height:1.75;padding:1px 1px 10px;scrollbar-width:thin}
+.composer textarea::placeholder{color:var(--subtle,#929aa6);opacity:.82}
+.composer-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.composer-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.composer-add-wrap{position:relative;flex:0 0 auto}
+.composer-add-btn{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line,#e3e6eb);border-radius:50%;background:var(--muted,#f7f8fa);color:var(--text,#252a33);padding:0;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+.composer-add-btn:hover,.composer-add-btn[aria-expanded=true]{background:var(--muted,#eef1f5);border-color:var(--subtle,#b9c1cc);transform:translateY(-1px)}
+.composer-add-menu{position:absolute;z-index:40;left:0;bottom:calc(100% + 9px);width:174px;padding:6px;border:1px solid var(--line,#e3e6eb);border-radius:13px;background:var(--surface,#fff);box-shadow:0 12px 34px rgba(15,23,42,.16);display:grid;gap:2px}
+.composer-add-menu button{height:37px;width:100%;display:flex;align-items:center;gap:10px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text,#252a33);text-align:left;font-size:13px}
+.composer-add-menu button:hover,.composer-add-menu button.tool-active{background:var(--muted,#f1f3f6)}
+.composer-add-menu button:disabled{opacity:.42;cursor:not-allowed}
+.composer-add-menu button svg:last-child{margin-left:auto}
+.composer-agent-pill,.composer-model-pill{height:36px;min-width:0;max-width:220px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--line,#e3e6eb);border-radius:999px;background:var(--muted,#f7f8fa);color:var(--text,#384252);font-size:12px;font-weight:600;white-space:nowrap;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.composer-agent-pill{position:relative;cursor:pointer}
+.composer-agent-pill span,.composer-model-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer-agent-pill select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.composer-agent-pill:hover,.composer-model-pill:hover{background:var(--muted,#eef1f5);border-color:var(--subtle,#b9c1cc)}
+.composer-model-pill{cursor:pointer}
+.composer-model-pill svg,.composer-agent-pill svg{flex:0 0 auto;color:var(--subtle,#7b8491)}
+.send-btn{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;background:#2563eb;color:#fff;transition:background .15s ease,transform .15s ease,opacity .15s ease}
+.send-btn:hover:not(:disabled){background:#1d4ed8;transform:translateY(-1px)}
+.send-btn:disabled{background:#aab4c4;color:#fff;opacity:.58;cursor:not-allowed}
+.send-btn.is-stop{background:#334155;opacity:1}
+.send-btn.is-stop:hover{background:#1e293b}
+.composer-hint{padding-top:7px;color:var(--subtle,#929aa6);font-size:10px}
+.app-shell[data-theme=dark] .composer{background:#171c25;border-color:#303744;box-shadow:0 3px 16px rgba(0,0,0,.2)}
+.app-shell[data-theme=dark] .composer:focus-within{border-color:#536174;box-shadow:0 3px 16px rgba(0,0,0,.22)}
+.app-shell[data-theme=dark] .composer-add-menu{background:#171c25;border-color:#394657}
+.app-shell[data-theme=dark] .composer-add-menu button{color:#e6eaf0}
+.app-shell[data-theme=dark] .composer-add-menu button:hover,.app-shell[data-theme=dark] .composer-add-menu button.tool-active{background:#283548}
+.app-shell[data-theme=dark] .composer-agent-pill,.app-shell[data-theme=dark] .composer-model-pill,.app-shell[data-theme=dark] .composer-add-btn{background:#202733;border-color:#394657;color:#e6eaf0}
+.app-shell[data-theme=dark] .composer-agent-pill:hover,.app-shell[data-theme=dark] .composer-model-pill:hover,.app-shell[data-theme=dark] .composer-add-btn:hover{background:#293443;border-color:#526176}
+.panel-resizer{flex:0 0 9px;width:9px;min-width:9px;z-index:30;touch-action:none;cursor:col-resize;user-select:none}
+.panel-resizer:after{left:3px;width:2px}
+.panel-resizer.is-resizing:after,.panel-resizer:hover:after{background:#6d91c4;box-shadow:0 0 0 3px rgba(109,145,196,.18)}
+body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-select:none!important;transition:none!important}
+.sidebar{min-width:240px;max-width:70vw;transition:none}
+.workbench-shell{min-width:240px;max-width:70vw;transition:none}
+@media(max-width:640px){
+ .composer-wrap{width:100%;padding:8px 0 10px}
+ .composer{padding:12px;border-radius:16px}
+ .composer-bottom{align-items:flex-end;gap:8px}
+ .composer-tools{gap:6px;flex:1 1 auto}
+ .composer-agent-pill,.composer-model-pill{max-width:calc(50vw - 65px);height:34px;padding:0 9px;font-size:11px}
+ .composer-add-btn{width:34px;height:34px}
+ .send-btn{width:40px;height:40px;flex:0 0 40px;align-self:flex-end;margin-left:auto}
+ .composer-add-menu{bottom:calc(100% + 8px)}
+}
+.composer-wrap .jump-latest{bottom:calc(100% + 5px);z-index:3}
+@media(max-width:640px){.composer-wrap .jump-latest{bottom:calc(100% + 6px)}}
