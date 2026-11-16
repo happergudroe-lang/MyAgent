@@ -67,3 +67,53 @@
  .composer-tools button{font-size:12px;padding:0 7px}
  .agent-select{max-width:92px;font-size:12px}
 }
+
+
+/* MyAgent interaction system — restrained, responsive, spring-like */
+:root{--ease-out-expo:cubic-bezier(.16,1,.3,1);--ease-smooth:cubic-bezier(.22,.68,0,1)}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button{transition:background-color .2s var(--ease-smooth),border-color .2s var(--ease-smooth),color .2s var(--ease-smooth),box-shadow .25s var(--ease-smooth),transform .25s var(--ease-out-expo),opacity .2s ease}
+button:active:not(:disabled){transform:scale(.975)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(65,112,210,.22);outline-offset:2px}
+.modal-backdrop{z-index:1000;padding:clamp(12px,3vw,32px);background:rgba(17,20,26,.34);backdrop-filter:blur(14px) saturate(135%);-webkit-backdrop-filter:blur(14px) saturate(135%)}
+.modal-window{width:min(760px,100%);max-height:min(88dvh,900px);border:1px solid rgba(255,255,255,.82);border-radius:26px;background:rgba(255,255,255,.96);box-shadow:0 32px 100px rgba(20,24,32,.24),0 2px 10px rgba(20,24,32,.06);transform:translateZ(0);overscroll-behavior:contain}
+.modal-window.wide{width:min(980px,100%)}
+.modal-header{flex:0 0 auto;padding:25px 28px 19px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.modal-header h2{font-size:24px;letter-spacing:-.7px}
+.modal-header p{font-size:14px}
+.modal-body{min-height:0;overscroll-behavior:contain;scrollbar-gutter:stable;padding:22px 28px 30px}
+.settings-body{display:grid;gap:24px}
+.settings-section{min-width:0}
+.settings-section>h3{font-size:16px;letter-spacing:-.25px}
+.settings-section>p{font-size:13px;line-height:1.65}
+.provider-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.provider-card{min-width:0;min-height:76px;padding:14px 15px;border-radius:15px;transition:all .24s var(--ease-out-expo)}
+.provider-card:hover{transform:translateY(-2px);border-color:#c8cbd1;box-shadow:0 8px 22px rgba(25,30,40,.06)}
+.provider-card.active{border-color:#8c99ad;background:linear-gradient(135deg,#f5f7fa,#fff);box-shadow:inset 0 0 0 1px rgba(90,110,145,.1)}
+.my-model-config{display:grid;gap:13px;margin-top:16px;padding:19px;border:1px solid #dfe4ec;border-radius:19px;background:linear-gradient(145deg,#f7f9fc,#fff 72%);box-shadow:0 8px 28px rgba(35,52,80,.045)}
+.my-model-heading{display:flex;align-items:center;gap:11px;margin-bottom:3px}
+.my-model-heading>div{display:grid;gap:3px;min-width:0}
+.my-model-heading b{font-size:14px;color:#202938}
+.my-model-heading small{font-size:12px;color:#8992a0}
+.my-model-mark{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:#202b3d;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.5px}
+.my-priority{margin-left:auto;padding:6px 9px;border-radius:99px;background:#e9eef7;color:#53647e;font-size:11px;white-space:nowrap}
+.my-model-config label{display:grid;gap:7px;color:#555f6e;font-size:12px;font-weight:600}
+.my-model-config input{width:100%;height:43px;padding:0 12px;border:1px solid #dce1e8;border-radius:11px;background:rgba(255,255,255,.9);color:#202938;font-size:14px;transition:border-color .2s,box-shadow .2s}
+.my-model-config input:focus{outline:0;border-color:#8798b2;box-shadow:0 0 0 4px rgba(103,128,166,.12)}
+.my-config-hint{font-size:11px;line-height:1.65;color:#8992a0}
+.settings-model-label{margin-top:14px}
+.settings-model-label select{height:43px;border-radius:11px;font-size:14px}
+.composer-wrap{position:relative;z-index:1}
+.key-panel{display:none!important}
+.app-toast{z-index:1200}
+@media(max-width:680px){
+ .modal-backdrop{padding:8px;align-items:end}
+ .modal-window,.modal-window.wide{width:100%;max-height:91dvh;border-radius:24px 24px 17px 17px}
+ .modal-header{padding:20px 19px 15px}
+ .modal-header h2{font-size:21px}
+ .modal-body{padding:17px 18px 24px}
+ .provider-list{grid-template-columns:1fr}
+ .my-model-config{padding:15px;border-radius:16px}
+ .my-priority{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){button{transition:none!important}}
