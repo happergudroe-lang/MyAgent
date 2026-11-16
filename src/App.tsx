@@ -57,7 +57,7 @@ export default function App() {
  const [workspaceDescription,setWorkspaceDescription]=useState('')
  const [workspaceBusy,setWorkspaceBusy]=useState(false)
  const [input,setInput]=useState('')
- const [model,setModel]=useState(()=>{const saved=localStorage.getItem('myagent:model');return !saved||saved==='my-model'?DEFAULT_GATEWAY_MODEL:saved})
+ const [model,setModel]=useState(()=>{const saved=localStorage.getItem('myagent:model');const savedProvider=localStorage.getItem('myagent:provider')||'my';return savedProvider==='my'||!saved||saved==='my-model'?DEFAULT_GATEWAY_MODEL:saved})
  const [provider,setProvider]=useState(()=>localStorage.getItem('myagent:provider')||'my')
  const [myBaseUrl,setMyBaseUrl]=useState(()=>localStorage.getItem('myagent:myBaseUrl')||'')
  const [myModelName,setMyModelName]=useState(()=>localStorage.getItem('myagent:myModelName')||DEFAULT_GATEWAY_MODEL)
