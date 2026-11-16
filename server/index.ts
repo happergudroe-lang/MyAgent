@@ -197,7 +197,14 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
   {name:'web_search',description:'联网搜索网页资料。',input_schema:{type:'object',properties:{query:{type:'string'}},required:['query']}},
   {name:'run_code',description:'需要用户审批后在远程隔离沙箱运行代码。',input_schema:{type:'object',properties:{language:{type:'string',enum:['javascript','python']},code:{type:'string'}},required:['language','code']}}
  ].filter(t=>allowedTools.includes(t.name))
- const response=await fetch(baseUrl+'/v1/messages',{method:'POST',headers,body:JSON.stringify({model:selectedModel,max_tokens:4096,stream:false,...(systemText?{system:systemText}:{}),messages:history.filter(m=>m.role!=='system'),...(claudeTools.length?{tools:claudeTools}:{})})});if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'Claude 请求失败');return response.json()}
+ const response=await fetch(baseUrl+'/v1/messages',{method:'POST',headers,body:JSON.stringify({model:selectedModel,max_tokens:4096,stream:true,...(systemText?{system:systemText}:{}),messages:history.filter(m=>m.role!=='system'),...(claudeTools.length?{tools:claudeTools}:{})})})
+ if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'Claude 请求失败')
+ if(!response.body)throw new Error('Claude 没有返回可读取的数据流')
+ const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';const blocks:Record<number,any>={}
+ const consume=(line:string)=>{if(!line.startsWith('data:'))return;const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')return;const event=JSON.parse(raw);if(event.type==='error')throw new Error(event.error?.message||'Claude 流式生成失败');if(event.type==='content_block_start'){const block={...(event.content_block||{})};if(block.type==='text')block.text=block.text||'';if(block.type==='tool_use'){block.input=block.input||{};(block as any).partialJson=''}blocks[Number(event.index||0)]=block}else if(event.type==='content_block_delta'){const block=blocks[Number(event.index||0)];if(!block)return;if(event.delta?.type==='text_delta'&&typeof event.delta.text==='string'){block.text=(block.text||'')+event.delta.text;sendEvent(res,{text:event.delta.text})}if(event.delta?.type==='input_json_delta')(block as any).partialJson=((block as any).partialJson||'')+String(event.delta.partial_json||'')}else if(event.type==='content_block_stop'){const block=blocks[Number(event.index||0)];if(block?.type==='tool_use'&&(block as any).partialJson){try{block.input=JSON.parse((block as any).partialJson)}catch{throw new Error('Claude 工具参数格式无效。')}}}}
+ while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true}).replace(/\\r\\n/g,'\\n');const lines=buffer.split('\\n');buffer=lines.pop()||'';for(const line of lines)consume(line)}
+ buffer+=decoder.decode();if(buffer.trim())consume(buffer)
+ return {content:Object.keys(blocks).sort((a,b)=>Number(a)-Number(b)).map(k=>{const block={...blocks[Number(k)]};delete block.partialJson;return block})}}
  try{
   let answer=''
   if(!isClaude&&allowedTools.length===0){
@@ -226,7 +233,7 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
     for(const call of calls){const name=call.function?.name||'';const args=call.function?.arguments||'{}';sendEvent(res,{tool:{name,status:'running',input:args}});const output=await executeTool(name,args,res);sendEvent(res,{tool:{name,status:'completed',output}});history.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(output)})}
    }
   }
-  if(answer&&isClaude)sendEvent(res,{text:answer});else if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
+  if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
   sendEvent(res,'[DONE]')
  }catch(error){sendEvent(res,{error:error instanceof Error?error.message:'模型请求失败。'})}finally{res.end()}
 })
