@@ -171,6 +171,7 @@ function requireExternalApiKey(req:express.Request,res:express.Response,next:exp
  if(!supplied||supplied!==expected)return res.status(401).json({error:{message:'Invalid API key.',type:'authentication_error'}})
  next()
 }
+app.options(['/v1/models','/api/v1/models','/v1/chat/completions','/api/v1/chat/completions','/v1/completions','/api/v1/completions'],requireExternalApiKey,(_req,res)=>res.status(204).end())
 app.get(['/v1/models','/api/v1/models'],externalApiLimiter,requireExternalApiKey,(_req,res)=>res.json({object:'list',data:[{id:process.env.MY_MODEL||'myrqvia',object:'model',created:0,owned_by:'myagent'}]}))
 app.post(['/v1/chat/completions','/api/v1/chat/completions'],externalApiLimiter,requireExternalApiKey,async(req,res)=>{
  const baseUrl=String(process.env.MY_BASE_URL||'').replace(/\/$/,'')
