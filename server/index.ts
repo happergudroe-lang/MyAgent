@@ -181,7 +181,16 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
  res.status(200);res.setHeader('Content-Type','text/event-stream; charset=utf-8');res.setHeader('Cache-Control','no-cache, no-transform');res.setHeader('Connection','keep-alive');res.flushHeaders?.()
  const headers:Record<string,string>={'Content-Type':'application/json'}
  if(isClaude){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01'}else headers.Authorization='Bearer '+apiKey
- const executeOpenAI=async(history:ChatMessage[])=>{const response=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:selectedModel,messages:history,...(allowedTools.length?{tools:toolSpecs.filter(t=>allowedTools.includes(t.function.name)),tool_choice:'auto'}:{})})});if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'模型请求失败');return response.json()}
+ const executeOpenAI=async(history:ChatMessage[])=>{
+  const response=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:selectedModel,messages:history,...(allowedTools.length?{tools:toolSpecs.filter(t=>allowedTools.includes(t.function.name)),tool_choice:'auto'}:{}),stream:true})})
+  if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'模型请求失败')
+  if(!response.body)throw new Error('模型服务没有返回可读取的数据流')
+  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',content='';const toolCalls:Record<number,any>={}
+  const consume=(line:string)=>{if(!line.startsWith('data:'))return;const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')return;const chunk=JSON.parse(raw);if(chunk.error)throw new Error(chunk.error.message||'模型流式生成失败');const delta=chunk.choices?.[0]?.delta;if(typeof delta?.content==='string'&&delta.content){content+=delta.content;sendEvent(res,{text:delta.content})}for(const part of delta?.tool_calls||[]){const index=Number(part.index||0);const call=toolCalls[index]||(toolCalls[index]={id:'',type:'function',function:{name:'',arguments:''}});if(part.id)call.id=part.id;if(part.type)call.type=part.type;if(part.function?.name)call.function.name+=part.function.name;if(part.function?.arguments)call.function.arguments+=part.function.arguments}}
+  while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true}).replace(/\\r\\n/g,'\\n');const lines=buffer.split('\\n');buffer=lines.pop()||'';for(const line of lines)consume(line)}
+  buffer+=decoder.decode();if(buffer.trim())consume(buffer)
+  return {choices:[{message:{content,tool_calls:Object.keys(toolCalls).sort((a,b)=>Number(a)-Number(b)).map(k=>toolCalls[Number(k)])}}]}
+ }
  const executeClaude=async(history:any[])=>{const claudeTools=[
   {name:'calculator',description:'计算数学表达式。',input_schema:{type:'object',properties:{expression:{type:'string'}},required:['expression']}},
   {name:'get_current_time',description:'查询指定时区当前时间。',input_schema:{type:'object',properties:{timezone:{type:'string'}}}},
@@ -217,7 +226,7 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
     for(const call of calls){const name=call.function?.name||'';const args=call.function?.arguments||'{}';sendEvent(res,{tool:{name,status:'running',input:args}});const output=await executeTool(name,args,res);sendEvent(res,{tool:{name,status:'completed',output}});history.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(output)})}
    }
   }
-  if(answer&& (isClaude||allowedTools.length>0))sendEvent(res,{text:answer});else if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
+  if(answer&&isClaude)sendEvent(res,{text:answer});else if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
   sendEvent(res,'[DONE]')
  }catch(error){sendEvent(res,{error:error instanceof Error?error.message:'模型请求失败。'})}finally{res.end()}
 })
