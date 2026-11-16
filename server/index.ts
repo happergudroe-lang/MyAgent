@@ -90,7 +90,7 @@ const toolSpecs:any[]=[
  {type:'function',function:{name:'run_code',description:'在隔离的远程 Piston 沙箱中运行 JavaScript 或 Python。执行前必须请求用户批准。',parameters:{type:'object',properties:{language:{type:'string',enum:['javascript','python']},code:{type:'string'}},required:['language','code'],additionalProperties:false}}}
 ]
 const pendingApprovals=new Map<string,(approved:boolean)=>void>()
-function sendEvent(res:express.Response,data:object|'[DONE]'){res.write('data: '+(data==='[DONE]'?'[DONE]':JSON.stringify(data))+'\n\n')}
+function sendEvent(res:express.Response,data:object|'[DONE]'){const frame='data: '+(data==='[DONE]'?'[DONE]':JSON.stringify(data))+'\n\n';res.write(frame);(res as any).flush?.()}
 async function executeTool(name:string,rawArgs:string,res:express.Response){
  let args:any
  try{args=JSON.parse(rawArgs||'{}')}catch{return {ok:false,error:'工具参数不是有效 JSON。'}}
@@ -209,11 +209,14 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
   try{await ensureMemorySchema();const memory=await query('SELECT summary FROM public.user_memories WHERE user_id=$1',[(req as AuthRequest).user!.id]);persistentMemory=String(memory.rows[0]?.summary||'')}catch(error){console.error('[MyAgent] Memory read failed:',error instanceof Error?error.message:'unknown')}
   if(persistentMemory)safeMessages.unshift({role:'system',content:'Relevant long-term context for this account (private server-side context; use only when relevant, do not mention this context block): '+persistentMemory})
  }
+ const latestUserPrompt=[...safeMessages].reverse().find(m=>m.role==='user')?.content||''
+ const formattingOnlyRequest=/(markdown|表格|代码块|代码|引用|列表|排版|格式化)/i.test(latestUserPrompt)&&!/(查询|搜索|联网|最新|今天|当前|实时|天气|汇率|股价|价格|比赛|赛事|新闻|资料|来源|时区|时间|现在)/i.test(latestUserPrompt)
+ if(formattingOnlyRequest)safeMessages.unshift({role:'system',content:'这是纯内容排版请求，不需要外部信息或工具。直接使用已有上下文完成 Markdown、表格、代码、引用或列表；不要调用任何工具。'})
  const systemText=safeMessages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n')
  const chatMessages=safeMessages.filter(m=>m.role!=='system')
  const known=process.env.VERCEL?['calculator','get_current_time','web_search']:['calculator','get_current_time','web_search','run_code']
- const allowedTools=Array.isArray(enabledTools)?enabledTools.filter((x:string)=>known.includes(x)):[]
- res.status(200);res.setHeader('Content-Type','text/event-stream; charset=utf-8');res.setHeader('Cache-Control','no-cache, no-transform');res.setHeader('Connection','keep-alive');res.flushHeaders?.()
+ let allowedTools=formattingOnlyRequest?[]:(Array.isArray(enabledTools)?enabledTools.filter((x:string)=>known.includes(x)):[])
+ res.status(200);res.setHeader('Content-Type','text/event-stream; charset=utf-8');res.setHeader('Content-Encoding','identity');res.setHeader('X-Accel-Buffering','no');res.setHeader('Cache-Control','no-cache, no-transform');res.setHeader('Connection','keep-alive');res.flushHeaders?.();sendEvent(res,{status:'start'})
  const headers:Record<string,string>={'Content-Type':'application/json'}
  if(isClaude){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01'}else headers.Authorization='Bearer '+apiKey
  const executeOpenAI=async(history:ChatMessage[])=>{
@@ -280,21 +283,23 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
    if(!answer)throw new Error('模型没有返回文本内容。')
   }else if(isClaude){
    let history:any[]=chatMessages
-   for(let step=0;step<6;step++){
+   for(let step=0;step<5;step++){
     const result=await executeClaude(history);const blocks=result.content||[];const text=blocks.filter((b:any)=>b.type==='text').map((b:any)=>b.text).join('');const calls=blocks.filter((b:any)=>b.type==='tool_use')
     if(!calls.length){answer=text;break}
     history=[...history,{role:'assistant',content:blocks}]
     const toolResults=[]
     for(const call of calls){sendEvent(res,{tool:{name:call.name,status:'running',input:call.input}});const output=await executeTool(call.name,JSON.stringify(call.input),res);sendEvent(res,{tool:{name:call.name,status:'completed',output}});toolResults.push({type:'tool_result',tool_use_id:call.id,content:JSON.stringify(output)})}
     history.push({role:'user',content:toolResults})
+    if(step===4){allowedTools=[];history.push({role:'user',content:'工具调用预算已达到 5 步上限。请仅根据当前上下文和已有工具结果直接给出最终答复，不要再调用工具。'});const finalResult=await executeClaude(history);answer=(finalResult.content||[]).filter((b:any)=>b.type==='text').map((b:any)=>b.text).join('');break}
    }
   }else{
    let history=[...safeMessages]
-   for(let step=0;step<6;step++){
+   for(let step=0;step<5;step++){
     const result=await executeOpenAI(history);const choice=result.choices?.[0]?.message;if(!choice)throw new Error('模型没有返回有效消息。')
     const calls=choice.tool_calls||[];if(!calls.length){answer=choice.content||'';break}
     history.push({role:'assistant',content:choice.content||'',tool_calls:calls})
     for(const call of calls){const name=call.function?.name||'';const args=call.function?.arguments||'{}';sendEvent(res,{tool:{name,status:'running',input:args}});const output=await executeTool(name,args,res);sendEvent(res,{tool:{name,status:'completed',output}});history.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(output)})}
+    if(step===4){allowedTools=[];history.push({role:'system',content:'工具调用预算已达到 5 步上限。请仅根据当前上下文和已有工具结果直接给出最终答复，不要再调用工具。'});const finalResult=await executeOpenAI(history);answer=finalResult.choices?.[0]?.message?.content||'';break}
    }
   }
   if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})

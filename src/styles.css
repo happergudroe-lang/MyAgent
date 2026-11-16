@@ -480,3 +480,9 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .automation-empty p{max-width:390px;margin:0;color:var(--panel-subtle);font-size:12px;line-height:1.8}
 .automation-empty-foot{display:flex;align-items:center;gap:8px;margin-top:18px;padding:8px 12px;border:1px solid var(--panel-border);border-radius:999px;background:var(--panel-muted);color:var(--panel-subtle);font-size:11px}
 .automation-status-dot{width:7px;height:7px;border-radius:50%;background:#a5acb7}
+
+
+/* Smooth grapheme-by-grapheme streaming cursor */
+.stream-cursor{display:inline-block;margin-left:2px;font-weight:500;opacity:1;animation:myagent-cursor-blink 1s steps(2,start) infinite;color:currentColor}
+@keyframes myagent-cursor-blink{to{visibility:hidden}}
+@media(prefers-reduced-motion:reduce){.stream-cursor{animation:none;opacity:1}}
