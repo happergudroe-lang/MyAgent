@@ -159,7 +159,7 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
   res.json({name:file.originalname,characters:content.length,content:content.slice(0,10000),truncated:content.length>10000})
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
-app.post('/api/chat',chatLimiter,async(req,res)=>{
+app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
  const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey,baseUrl:requestedBaseUrl}=req.body??{}
  const providerId=(requestedProvider||'my') as ProviderId
  const config=providers[providerId]
