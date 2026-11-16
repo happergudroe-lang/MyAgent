@@ -908,3 +908,12 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .app-shell .starter-card:hover{box-shadow:none!important}
 .app-shell .tool-activity,.app-shell .command-palette>button{box-shadow:none!important}
 @media(prefers-reduced-motion:reduce){.thinking-skeleton i{animation:none;opacity:.75}}
+
+/* Enforce the low-noise visual constraint across legacy surfaces too */
+.app-shell,.auth-screen,.app-shell *,.auth-screen *{background-image:none!important;box-shadow:none!important}
+.app-shell a,.auth-screen a{color:var(--ink-text,#111827)}
+.app-shell .provider-state.ready,.app-shell .provider-state{color:var(--ink-weak,#6b7487)!important}
+.app-shell .status-success,.app-shell .tool-success{color:var(--ink-muted,#4b5565)!important}
+.app-shell .sidebar-workspace-section,.app-shell .history-head,.app-shell .sidebar-nav-caption{letter-spacing:.01em}
+.app-shell .modal-header h2{font-size:20px;font-weight:500;line-height:1.25}
+.app-shell .modal-header p{font-size:13px;line-height:1.6;color:var(--ink-weak)}
