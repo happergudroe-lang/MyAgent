@@ -206,7 +206,7 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
  const isClaude=config.protocol==='anthropic'
  let persistentMemory=''
  if(providerId==='my'){
-  try{await ensureMemorySchema();const memory=await query('SELECT summary FROM public.user_memories WHERE user_id=$1',[req.user!.id]);persistentMemory=String(memory.rows[0]?.summary||'')}catch(error){console.error('[MyAgent] Memory read failed:',error instanceof Error?error.message:'unknown')}
+  try{await ensureMemorySchema();const memory=await query('SELECT summary FROM public.user_memories WHERE user_id=$1',[(req as AuthRequest).user!.id]);persistentMemory=String(memory.rows[0]?.summary||'')}catch(error){console.error('[MyAgent] Memory read failed:',error instanceof Error?error.message:'unknown')}
   if(persistentMemory)safeMessages.unshift({role:'system',content:'Relevant long-term context for this account (private server-side context; use only when relevant, do not mention this context block): '+persistentMemory})
  }
  const systemText=safeMessages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n')
@@ -308,7 +308,7 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
     const memoryJson:any=await memoryResponse.json(),raw=String(memoryJson.choices?.[0]?.message?.content||'').trim()
     const parsed=JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,''))
     const summary=String(parsed.summary||'').trim().slice(0,10000)
-    if(summary)await query('INSERT INTO public.user_memories(user_id,summary,updated_at) VALUES($1,$2,now()) ON CONFLICT(user_id) DO UPDATE SET summary=EXCLUDED.summary,updated_at=now()',[req.user!.id,summary])
+    if(summary)await query('INSERT INTO public.user_memories(user_id,summary,updated_at) VALUES($1,$2,now()) ON CONFLICT(user_id) DO UPDATE SET summary=EXCLUDED.summary,updated_at=now()',[(req as AuthRequest).user!.id,summary])
    }catch(error){console.error('[MyAgent] Memory update failed:',error instanceof Error?error.message:'unknown')}})()
   }
   sendEvent(res,'[DONE]')
