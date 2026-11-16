@@ -189,9 +189,9 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
   if(!response.body)throw new Error('模型服务没有返回可读取的数据流')
   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',content='';const toolCalls:Record<number,any>={}
   const consumeEvent=(frame:string)=>{
-   const dataLines=frame.split(/\\r?\\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart())
+   const dataLines=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart())
    if(!dataLines.length)return
-   const raw=dataLines.join('\\n').trim()
+   const raw=dataLines.join('\n').trim()
    if(!raw||raw==='[DONE]')return
    let chunk:any
    try{chunk=JSON.parse(raw)}catch(error){console.error('[MyAgent] Invalid model SSE event JSON',error);throw new Error('MODEL_STREAM_FORMAT_ERROR')}
@@ -208,7 +208,7 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
    }
   }
   const consumeBuffer=(flush=false)=>{
-   const frames=buffer.split(/\\r?\\n\\r?\\n/)
+   const frames=buffer.split(/\r?\n\r?\n/)
    buffer=flush?'':(frames.pop()||'')
    for(const frame of frames)consumeEvent(frame)
    if(flush&&buffer.trim())consumeEvent(buffer)
