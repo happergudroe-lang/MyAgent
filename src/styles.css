@@ -449,7 +449,7 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .workbench-grid.layout-grid .work-pane:nth-of-type(4){grid-column:3;grid-row:3}
 .pane-splitter{z-index:5;touch-action:none;border-radius:8px;background:transparent;transition:background .18s ease-out,box-shadow .18s ease-out}
 .pane-splitter:hover,.pane-splitter:active{background:#7899c5;box-shadow:0 0 0 2px #7899c530}
-.pane-splitter.vertical{grid-column:2;grid-row:1/4;width:7px;cursor:col-resize}
-.pane-splitter.horizontal{grid-column:1/4;grid-row:2;height:7px;cursor:row-resize}
+.pane-splitter.vertical{grid-column:2;grid-row:1/-1;width:7px;cursor:col-resize}
+.pane-splitter.horizontal{grid-column:1/-1;grid-row:2;height:7px;cursor:row-resize}
 .app-shell[data-theme=dark] .workbench-tabs{background:#171c25;border-color:#364252}
 .app-shell[data-theme=dark] .workbench-tabs button.active{background:#202733;border-color:#364252;color:#e6eaf0}
