@@ -392,3 +392,7 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .app-shell[data-theme=dark] .icon-btn{color:#b1bdcc}
 .app-shell[data-theme=dark] .icon-btn:hover{background:#293443;color:#fff}
 .messages>.message-row{content-visibility:auto;contain-intrinsic-size:auto 150px}
+
+
+.workbench-grid.is-maximized .work-pane{grid-column:1/-1;grid-row:1/-1}
+.workbench-grid.is-maximized .pane-splitter{display:none}
