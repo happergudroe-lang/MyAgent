@@ -243,3 +243,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @keyframes stream-caret{0%,48%{opacity:1}50%,100%{opacity:0}}
 @media(max-width:760px){.jump-latest{bottom:105px}}
 @media(prefers-reduced-motion:reduce){.streaming-text:after{animation:none;opacity:1}}
+
+.retry-message{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:7px 12px;border:1px solid #d9e1eb;border-radius:9px;background:#f7f9fc;color:#405a78;font-size:13px;font-weight:600}
+.retry-message:hover{background:#edf3fa;border-color:#b9c9dc}
+.retry-message:disabled{opacity:.5;cursor:not-allowed}
+.thinking-row{flex-wrap:wrap;row-gap:10px}
+.thinking-skeleton{display:flex;flex:0 0 min(360px,calc(100% - 48px));gap:7px;margin-left:16px;overflow:hidden}
+.thinking-skeleton i{display:block;height:7px;border-radius:99px;background:linear-gradient(90deg,#eceff3 25%,#f8f9fb 50%,#eceff3 75%);background-size:200% 100%;animation:myagent-skeleton 1.25s ease-in-out infinite}
+.thinking-skeleton i:nth-child(1){width:42%}
+.thinking-skeleton i:nth-child(2){width:28%;animation-delay:.12s}
+.thinking-skeleton i:nth-child(3){width:18%;animation-delay:.24s}
+@keyframes myagent-skeleton{0%{background-position:100% 0}100%{background-position:-100% 0}}
