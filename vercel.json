@@ -6,5 +6,11 @@
       "maxDuration": 60,
       "includeFiles": "server/**"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/v1/:path*",
+      "destination": "/api/v1/:path*"
+    }
+  ]
 }
