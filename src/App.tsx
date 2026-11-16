@@ -50,7 +50,7 @@ function CodeFrame({children}:any){
  const lines=source.split('\n')
  return <section className="code-frame"><header className="code-toolbar"><span className="code-language">{language}</span><span className="code-toolbar-actions"><button type="button" onClick={()=>setLineNumbers(v=>!v)} title="切换行号">{lineNumbers?'隐藏行号':'显示行号'}</button><button type="button" onClick={()=>void navigator.clipboard.writeText(source)} title="复制代码"><Copy size={13}/>复制</button></span></header><div className="code-scroll">{lineNumbers&&<div className="code-line-numbers" aria-hidden="true">{lines.map((_,i)=><span key={i}>{i+1}</span>)}</div>}<pre>{node?cloneElement(node as any,{className:props.className}):<code>{source}</code>}</pre></div></section>
 }
-\ntype WorkPaneKind = 'notes' | 'code' | 'terminal' | 'file' | 'image'
+type WorkPaneKind = 'notes' | 'code' | 'terminal' | 'file' | 'image'
 type WorkPane = { id:string; title:string; kind:WorkPaneKind; content:string; src?:string }
 type WorkbenchProps = { theme:string; onThemeChange:(value:string)=>void; onClose:()=>void }
 const Workbench=memo(function Workbench({theme,onThemeChange,onClose}:WorkbenchProps) {
@@ -58,7 +58,9 @@ const Workbench=memo(function Workbench({theme,onThemeChange,onClose}:WorkbenchP
  const [layout,setLayout]=useState<'one'|'columns'|'rows'|'grid'>(()=>{try{return (localStorage.getItem('myagent:workbench-layout') as any)||'one'}catch{return 'one'}})
  const [split,setSplit]=useState(()=>{try{return Math.max(25,Math.min(75,Number(localStorage.getItem('myagent:workbench-split')||50)))}catch{return 50}})
  const gridRef=useRef<HTMLDivElement|null>(null)
- const [maximized,setMaximized]=useState<string|null>(null)\n const [activePaneId,setActivePaneId]=useState('welcome')\n const [splitY,setSplitY]=useState(()=>{try{return Math.max(25,Math.min(75,Number(localStorage.getItem('myagent:workbench-split-y')||50)))}catch{return 50}})
+ const [maximized,setMaximized]=useState<string|null>(null)
+ const [activePaneId,setActivePaneId]=useState('welcome')
+ const [splitY,setSplitY]=useState(()=>{try{return Math.max(25,Math.min(75,Number(localStorage.getItem('myagent:workbench-split-y')||50)))}catch{return 50}})
  const [dragging,setDragging]=useState<string|null>(null)
  const [dropTarget,setDropTarget]=useState<string|null>(null)
  const fileRef=useRef<HTMLInputElement|null>(null)
@@ -155,7 +157,8 @@ export default function App() {
  const [rightWidth,setRightWidth]=useState(()=>{try{return Math.max(320,Math.min(720,Number(localStorage.getItem('myagent:layout:right')||420)))}catch{return 420}})
  const [rightOpen,setRightOpen]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=1100)
  const [themeMode,setThemeMode]=useState(()=>{try{return localStorage.getItem('myagent:theme')||'system'}catch{return 'system'}})
- const [systemDark,setSystemDark]=useState(()=>typeof window!=='undefined'&&window.matchMedia?.('(prefers-color-scheme: dark)').matches||false)
+ const [pendingAttachment,setPendingAttachment]=useState<{name:string;content:string}|null>(null)
+ const attachmentPreviewsRef=useRef<Record<string,{content:string;src?:string}>>({})
  const [messageFeedback,setMessageFeedback]=useState<Record<number,'up'|'down'>>({})
  const [pendingAttachment,setPendingAttachment]=useState<{name:string;content:string}|null>(null)\n const attachmentPreviewsRef=useRef<Record<string,{content:string;src?:string}>>({})
  const abortControllerRef=useRef<AbortController|null>(null)
