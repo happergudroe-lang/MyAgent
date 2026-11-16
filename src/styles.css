@@ -651,3 +651,18 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
  .app-shell,.app-shell *{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
  .starter-card:hover{transform:none}
 }
+
+.sidebar{transition:width 240ms cubic-bezier(.2,.8,.2,1),flex-basis 240ms cubic-bezier(.2,.8,.2,1)}
+.composer{position:relative}
+.composer-drop-active{border-color:#4d86e8!important;box-shadow:0 0 0 3px rgba(77,134,232,.18),0 8px 28px rgba(35,75,135,.12)!important}
+.composer-drop-active:after{content:"松开即可添加文件";position:absolute;inset:8px;z-index:5;display:grid;place-items:center;border:1px dashed #6d9be8;border-radius:11px;background:color-mix(in srgb,var(--surface,#fff) 86%,#4d86e8);color:#3973c8;font-size:13px;font-weight:650;pointer-events:none;backdrop-filter:blur(5px)}
+.command-palette{display:grid;gap:4px;padding:10px}
+.command-palette>button{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 12px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--panel-text);text-align:left}
+.command-palette>button:hover{background:var(--panel-muted);border-color:var(--panel-border)}
+.command-palette>button>svg{color:var(--panel-subtle)}
+.command-palette>button span{display:grid;gap:2px;flex:1}
+.command-palette>button b{font-size:13px;font-weight:600}
+.command-palette>button small{font-size:11px;color:var(--panel-subtle)}
+.command-palette kbd{padding:3px 6px;border:1px solid var(--panel-border);border-radius:5px;color:var(--panel-subtle);font:10px ui-monospace,monospace}
+.message-row.assistant .message-content{width:calc(100% - 35px);max-width:72ch;flex:1}
+@media(max-width:640px){.sidebar{min-width:240px;max-width:82vw}.topbar-title-edit{max-width:45vw}.top-actions .icon-btn{width:30px;height:30px}.composer-drop-active:after{inset:6px}}
