@@ -188,10 +188,39 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
   if(!response.ok)throw new Error((await response.text()).slice(0,1000)||'模型请求失败')
   if(!response.body)throw new Error('模型服务没有返回可读取的数据流')
   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',content='';const toolCalls:Record<number,any>={}
-  const consume=(line:string)=>{if(!line.startsWith('data:'))return;const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')return;const chunk=JSON.parse(raw);if(chunk.error)throw new Error(chunk.error.message||'模型流式生成失败');const delta=chunk.choices?.[0]?.delta;if(typeof delta?.content==='string'&&delta.content){content+=delta.content;sendEvent(res,{text:delta.content})}for(const part of delta?.tool_calls||[]){const index=Number(part.index||0);const call=toolCalls[index]||(toolCalls[index]={id:'',type:'function',function:{name:'',arguments:''}});if(part.id)call.id=part.id;if(part.type)call.type=part.type;if(part.function?.name)call.function.name+=part.function.name;if(part.function?.arguments)call.function.arguments+=part.function.arguments}}
-  while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true}).replace(/\\r\\n/g,'\\n');const lines=buffer.split('\\n');buffer=lines.pop()||'';for(const line of lines)consume(line)}
-  buffer+=decoder.decode();if(buffer.trim())consume(buffer)
-  return {choices:[{message:{content,tool_calls:Object.keys(toolCalls).sort((a,b)=>Number(a)-Number(b)).map(k=>toolCalls[Number(k)])}}]}
+  const consumeEvent=(frame:string)=>{
+   const dataLines=frame.split(/\\r?\\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart())
+   if(!dataLines.length)return
+   const raw=dataLines.join('\\n').trim()
+   if(!raw||raw==='[DONE]')return
+   let chunk:any
+   try{chunk=JSON.parse(raw)}catch(error){console.error('[MyAgent] Invalid model SSE event JSON',error);throw new Error('MODEL_STREAM_FORMAT_ERROR')}
+   if(chunk.error)throw new Error(chunk.error.message||'模型流式生成失败')
+   const delta=chunk.choices?.[0]?.delta
+   if(typeof delta?.content==='string'&&delta.content){content+=delta.content;sendEvent(res,{text:delta.content})}
+   for(const part of delta?.tool_calls||[]){
+    const index=Number.isInteger(part.index)?part.index:0
+    const call=toolCalls[index]||(toolCalls[index]={id:'',type:'function',function:{name:'',arguments:''}})
+    if(part.id)call.id=part.id
+    if(part.type)call.type=part.type
+    if(part.function?.name)call.function.name+=part.function.name
+    if(typeof part.function?.arguments==='string')call.function.arguments+=part.function.arguments
+   }
+  }
+  const consumeBuffer=(flush=false)=>{
+   const frames=buffer.split(/\\r?\\n\\r?\\n/)
+   buffer=flush?'':(frames.pop()||'')
+   for(const frame of frames)consumeEvent(frame)
+   if(flush&&buffer.trim())consumeEvent(buffer)
+  }
+  while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});consumeBuffer()}
+  buffer+=decoder.decode();consumeBuffer(true)
+  const calls=Object.keys(toolCalls).sort((a,b)=>Number(a)-Number(b)).map(k=>toolCalls[Number(k)])
+  for(const call of calls){
+   const args=call.function?.arguments||'{}'
+   try{JSON.parse(args)}catch(error){console.error('[MyAgent] Invalid assembled tool arguments',error);throw new Error('MODEL_TOOL_ARGUMENTS_ERROR')}
+  }
+  return {choices:[{message:{content,tool_calls:calls}}]}
  }
  const executeClaude=async(history:any[])=>{const claudeTools=[
   {name:'calculator',description:'计算数学表达式。',input_schema:{type:'object',properties:{expression:{type:'string'}},required:['expression']}},
@@ -237,7 +266,7 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
   }
   if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
   sendEvent(res,'[DONE]')
- }catch(error){sendEvent(res,{error:error instanceof Error?error.message:'模型请求失败。'})}finally{res.end()}
+ }catch(error){const detail=error instanceof Error?error.message:'未知错误';console.error('[MyAgent] Chat generation failed:',detail);const friendly=detail==='MODEL_STREAM_FORMAT_ERROR'||detail==='MODEL_TOOL_ARGUMENTS_ERROR'?'模型返回格式异常，请重试。':/Unexpected non-whitespace character|JSON at position|JSON.parse/i.test(detail)?'模型返回格式异常，请重试。':/AbortError|aborted/i.test(detail)?'生成已中断，请重试。':'模型暂时无法完成请求，请稍后重试。';sendEvent(res,{error:friendly})}finally{res.end()}
 })
 if (!process.env.VERCEL) { app.use(express.static(path.resolve(process.cwd(),'dist'))); app.get('*',(req,res,next)=>{if(req.path.startsWith('/api/'))return next();res.sendFile(path.resolve(process.cwd(),'dist/index.html'))}); app.listen(port,'0.0.0.0',()=>console.log('MyAgent server listening on 0.0.0.0:'+port)) }
 export default app
