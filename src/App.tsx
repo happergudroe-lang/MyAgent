@@ -157,6 +157,7 @@ export default function App() {
  const [rightWidth,setRightWidth]=useState(()=>{try{return Math.max(320,Math.min(720,Number(localStorage.getItem('myagent:layout:right')||420)))}catch{return 420}})
  const [rightOpen,setRightOpen]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=1100)
  const [themeMode,setThemeMode]=useState(()=>{try{return localStorage.getItem('myagent:theme')||'system'}catch{return 'system'}})
+ const [systemDark,setSystemDark]=useState(()=>typeof window!=='undefined'&&window.matchMedia?.('(prefers-color-scheme: dark)').matches||false)
  const [pendingAttachment,setPendingAttachment]=useState<{name:string;content:string}|null>(null)
  const attachmentPreviewsRef=useRef<Record<string,{content:string;src?:string}>>({})
  const [messageFeedback,setMessageFeedback]=useState<Record<number,'up'|'down'>>({})
