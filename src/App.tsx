@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Activity, ArrowUp, AudioLines, BookOpen, Bot, BriefcaseBusiness, Check, ChevronDown, Clock3, Code2, Command, Copy, Download, ExternalLink, FileText, Folder, Globe2, LayoutGrid, Loader2, Menu, MessageSquare, Mic, MoreHorizontal, Paperclip, Pencil, Plus, Search, Settings2, Sparkles, Star, Trash2, Volume2, VolumeX, WandSparkles, X, Zap } from 'lucide-react'
+import { Activity, ArrowUp, AudioLines, BookOpen, Bot, BriefcaseBusiness, Check, ChevronDown, Clock3, Code2, Command, Copy, Download, ExternalLink, FileText, Folder, Globe2, Grid2X2, LayoutGrid, Loader2, Menu, MessageSquare, Mic, MoreHorizontal, Moon, Paperclip, PanelRightClose, Pencil, Plus, Search, Settings2, Sparkles, Square, Rows2, Columns2, Sun, Terminal, FileImage, GripVertical, Maximize2, ThumbsDown, ThumbsUp, RefreshCw, Trash2, Volume2, VolumeX, WandSparkles, X, Zap } from 'lucide-react'
 import { agents, toolDefaults } from './data'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -37,6 +37,44 @@ const modelInfo = [
  {id:'custom',label:'自定义服务商',hint:'兼容 OpenAI API 的接口'}
 ]
 const skillCommand = (skill:any)=>skill.repo==='anthropics/skills'?'npx skills add anthropics/skills --skill '+skill.skill:'npx skills add vercel-labs/agent-skills --skill '+skill.skill
+
+type WorkPaneKind = 'notes' | 'code' | 'terminal' | 'file'
+type WorkPane = { id:string; title:string; kind:WorkPaneKind; content:string }
+type WorkbenchProps = { theme:string; onThemeChange:(value:string)=>void; onClose:()=>void }
+function Workbench({theme,onThemeChange,onClose}:WorkbenchProps) {
+ const [panes,setPanes]=useState<WorkPane[]>([{id:'welcome',title:'工作区概览',kind:'notes',content:'在这里整理当前任务。\n\n可以添加笔记、代码草稿、终端输出或文件预览。'}])
+ const [layout,setLayout]=useState<'one'|'columns'|'rows'|'grid'>(()=>{try{return (localStorage.getItem('myagent:workbench-layout') as any)||'one'}catch{return 'one'}})
+ const [split,setSplit]=useState(50)
+ const [maximized,setMaximized]=useState<string|null>(null)
+ const [dragging,setDragging]=useState<string|null>(null)
+ const [dropTarget,setDropTarget]=useState<string|null>(null)
+ const fileRef=useRef<HTMLInputElement|null>(null)
+ useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('myagent:workbench-panes')||'[]');if(Array.isArray(saved)&&saved.length){setPanes(saved.map((p:any)=>({id:String(p.id),title:String(p.title),kind:p.kind as WorkPaneKind,content:''})))}}catch{}},[])
+ useEffect(()=>{try{localStorage.setItem('myagent:workbench-layout',layout);localStorage.setItem('myagent:workbench-panes',JSON.stringify(panes.map(({id,title,kind})=>({id,title,kind}))))}catch{}},[layout,panes])
+ useEffect(()=>{const onFile=(event:Event)=>{const detail=(event as CustomEvent<{name:string;content:string}>).detail;if(!detail)return;setPanes(prev=>[{id:'file-'+Date.now(),title:detail.name,kind:'file',content:detail.content},...prev]);setMaximized(null)};window.addEventListener('myagent:open-file',onFile);return()=>window.removeEventListener('myagent:open-file',onFile)},[])
+ const addPane=(kind:WorkPaneKind)=>{const titles={notes:'新建笔记',code:'代码草稿',terminal:'终端输出',file:'文件预览'};setPanes(prev=>[{id:kind+'-'+Date.now(),title:titles[kind],kind,content:kind==='terminal'?'等待工具输出…\n此区域用于展示输出，不会在浏览器中执行命令。':''},...prev]);setMaximized(null)}
+ const changeLayout=(next:'one'|'columns'|'rows'|'grid')=>{setLayout(next);const count=next==='grid'?4:next==='one'?1:2;setPanes(prev=>{const nextPanes=[...prev];while(nextPanes.length<count)nextPanes.push({id:'pane-'+Date.now()+'-'+nextPanes.length,title:'新窗格',kind:'notes',content:''});return nextPanes})}
+ const updatePane=(id:string,content:string)=>setPanes(prev=>prev.map(p=>p.id===id?{...p,content}:p))
+ const closePane=(id:string)=>{setPanes(prev=>prev.filter(p=>p.id!==id));if(maximized===id)setMaximized(null)}
+ const reorder=(from:string,to:string)=>{if(from===to)return;setPanes(prev=>{const next=[...prev],a=next.findIndex(p=>p.id===from),b=next.findIndex(p=>p.id===to);if(a<0||b<0)return prev;const [item]=next.splice(a,1);next.splice(b,0,item);return next})}
+ const beginSplit=(event:React.PointerEvent<HTMLDivElement>)=>{event.preventDefault();const start=event.clientX;const parent=event.currentTarget.parentElement;if(!parent)return;const width=parent.getBoundingClientRect().width;const move=(e:PointerEvent)=>setSplit(Math.max(25,Math.min(75,split+(e.clientX-start)/width*100)));const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})}
+ const visible=maximized?panes.filter(p=>p.id===maximized):panes.slice(0,layout==='grid'?4:layout==='one'?1:2)
+ const gridStyle:React.CSSProperties={gridTemplateColumns:layout==='columns'||layout==='grid'?'minmax(0,'+split+'fr) minmax(0,'+(100-split)+'fr)':'minmax(0,1fr)',gridTemplateRows:layout==='rows'?'repeat(2,minmax(0,1fr))':layout==='grid'?'repeat(2,minmax(0,1fr))':'minmax(0,1fr)'}
+ return <aside className="workbench" aria-label="多窗格工作区">
+  <div className="workbench-toolbar"><div className="workbench-heading"><LayoutGrid size={16}/><b>工作区画布</b><span>{panes.length} 个窗格</span></div><div className="workbench-actions"><button title="添加笔记" onClick={()=>addPane('notes')}><FileText size={15}/></button><button title="添加代码草稿" onClick={()=>addPane('code')}><Code2 size={15}/></button><button title="添加终端输出区" onClick={()=>addPane('terminal')}><Terminal size={15}/></button><button title="打开文件" onClick={()=>fileRef.current?.click()}><Paperclip size={15}/></button><input ref={fileRef} type="file" hidden onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const content=await file.text().catch(()=>'无法读取该文件预览');setPanes(prev=>[{id:'file-'+Date.now(),title:file.name,kind:'file',content},...prev]);e.target.value=''}}/></div><div className="workbench-layouts"><button className={layout==='one'?'active':''} title="单窗格" onClick={()=>changeLayout('one')}><Square size={14}/></button><button className={layout==='columns'?'active':''} title="左右两列" onClick={()=>changeLayout('columns')}><Columns2 size={14}/></button><button className={layout==='rows'?'active':''} title="上下两行" onClick={()=>changeLayout('rows')}><Rows2 size={14}/></button><button className={layout==='grid'?'active':''} title="2×2" onClick={()=>changeLayout('grid')}><Grid2X2 size={14}/></button></div><button className="workbench-theme" title="切换主题" onClick={()=>onThemeChange(theme==='dark'?'light':'dark')}>{theme==='dark'?<Sun size={15}/>:<Moon size={15}/>}</button><button className="workbench-close" title="收起工作区" onClick={onClose}><PanelRightClose size={16}/></button></div>
+  <div className={'workbench-grid layout-'+layout+(maximized?' is-maximized':'')} style={gridStyle}>
+   {visible.map((pane,index)=><React.Fragment key={pane.id}>
+    {(layout==='columns'||layout==='grid')&&index===1&&!maximized&&<div className="pane-splitter" role="separator" aria-label="调整窗格宽度" onPointerDown={beginSplit}/>}
+    <section className={'work-pane '+(dropTarget===pane.id?'drop-target':'')} draggable={!maximized} onDragStart={e=>{setDragging(pane.id);e.dataTransfer.setData('text/plain',pane.id)}} onDragOver={e=>{e.preventDefault();setDropTarget(pane.id)}} onDragLeave={()=>setDropTarget(null)} onDrop={e=>{e.preventDefault();reorder(e.dataTransfer.getData('text/plain')||dragging||'',pane.id);setDragging(null);setDropTarget(null)}} onDragEnd={()=>{setDragging(null);setDropTarget(null)}}>
+     <header className="work-pane-header"><span className="pane-grip" title="拖动重排"><GripVertical size={14}/></span><span className="pane-kind-icon">{pane.kind==='terminal'?<Terminal size={14}/>:pane.kind==='code'?<Code2 size={14}/>:pane.kind==='file'?<FileImage size={14}/>:<FileText size={14}/>}</span><b title={pane.title}>{pane.title}</b><button title={maximized===pane.id?'还原窗格':'最大化'} onClick={()=>setMaximized(maximized===pane.id?null:pane.id)}><Maximize2 size={13}/></button><button title="关闭窗格" onClick={()=>closePane(pane.id)}><X size={14}/></button></header>
+     <div className="work-pane-body">{pane.kind==='terminal'?<pre className="terminal-output">{pane.content||'终端输出区域\n\n工具执行结果会显示在这里。浏览器不会直接执行系统命令。'}</pre>:pane.kind==='file'?<pre className="file-preview">{pane.content||'文件内容为空'}</pre>:<textarea aria-label={pane.title} value={pane.content} onChange={e=>updatePane(pane.id,e.target.value)} placeholder={pane.kind==='code'?'在这里编写代码草稿…':'在这里记录想法、计划或摘要…'} spellCheck={false}/>}</div>
+    </section>
+   </React.Fragment>)}
+   {!maximized&&visible.length===0&&<div className="workbench-empty"><LayoutGrid size={24}/><b>画布已清空</b><span>从上方工具栏添加一个窗格。</span></div>}
+  </div>
+ </aside>
+}
+
 export default function App() {
  const [authUser,setAuthUser]=useState<{id:string,email:string,username:string}|null>(null)
  const [authReady,setAuthReady]=useState(false)
