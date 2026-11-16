@@ -70,9 +70,10 @@ app.post('/api/auth/logout',requireAuth,async(req:AuthRequest,res)=>{await query
 
 const port = Number(process.env.PORT || 3001)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
-type ProviderId = 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
+type ProviderId = 'my' | 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
 type ChatMessage = { role: string; content: any; tool_calls?: any[]; tool_call_id?: string; name?: string }
 const providers: Record<ProviderId, { label: string; envKey: string; baseUrl: string; protocol: 'openai' | 'anthropic'; models: string[] }> = {
+ my:{label:'My 自研模型',envKey:'MY_API_KEY',baseUrl:process.env.MY_BASE_URL||'',protocol:'openai',models:[process.env.MY_MODEL||'my-model']},
  openai:{label:'OpenAI',envKey:'OPENAI_API_KEY',baseUrl:'https://api.openai.com/v1',protocol:'openai',models:['gpt-4o','gpt-4o-mini','o3-mini']},
  deepseek:{label:'DeepSeek',envKey:'DEEPSEEK_API_KEY',baseUrl:'https://api.deepseek.com',protocol:'openai',models:['deepseek-chat','deepseek-reasoner']},
  claude:{label:'Claude',envKey:'ANTHROPIC_API_KEY',baseUrl:'https://api.anthropic.com',protocol:'anthropic',models:['claude-sonnet-4-5','claude-opus-4-1','claude-3-5-haiku-latest']},
@@ -158,7 +159,7 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
 app.post('/api/chat',chatLimiter,async(req,res)=>{
- const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey}=req.body??{}
+ const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey,baseUrl:requestedBaseUrl}=req.body??{}
  const providerId=(requestedProvider||'openai') as ProviderId
  const config=providers[providerId]
  if(!config)return res.status(400).json({error:'不支持的模型服务商。'})
@@ -169,8 +170,9 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
  for(const m of messages){if(!['user','assistant','system'].includes(m?.role)||typeof m?.content!=='string')return res.status(400).json({error:'消息格式无效。'});safeMessages.push({role:m.role,content:m.content.slice(0,12000)})}
  const selectedModel=String(model||config.models[0])
  if(!config.models.includes(selectedModel)&&providerId!=='custom')return res.status(400).json({error:'所选模型不属于当前服务商。'})
- const baseUrl=config.baseUrl.replace(/\/$/,'')
- if(!baseUrl)return res.status(400).json({error:'请先设置 CUSTOM_BASE_URL。'})
+ const baseUrl=String((providerId==='my'||providerId==='custom')?requestedBaseUrl||config.baseUrl:config.baseUrl).trim().replace(/\/$/,'')
+ if(!baseUrl)return res.status(400).json({error:providerId==='my'?'请先填写 My 自研模型的 API Base URL。':'请先设置 CUSTOM_BASE_URL。'})
+ try{const endpoint=new URL(baseUrl);if(!['https:','http:'].includes(endpoint.protocol)||endpoint.username||endpoint.password)return res.status(400).json({error:'API Base URL 必须是有效的 HTTP(S) 地址。'})}catch{return res.status(400).json({error:'API Base URL 格式无效，请检查地址。'})}
  const isClaude=config.protocol==='anthropic'
  const systemText=safeMessages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n')
  const chatMessages=safeMessages.filter(m=>m.role!=='system')
