@@ -73,7 +73,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 *
 type ProviderId = 'my' | 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
 type ChatMessage = { role: string; content: any; tool_calls?: any[]; tool_call_id?: string; name?: string }
 const providers: Record<ProviderId, { label: string; envKey: string; baseUrl: string; protocol: 'openai' | 'anthropic'; models: string[] }> = {
- my:{label:'MyAgent 智能模型',envKey:'AI_GATEWAY_API_KEY',baseUrl:'https://ai-gateway.vercel.sh/v1',protocol:'openai',models:[process.env.AI_GATEWAY_MODEL||'poolside/laguna-s-2.1-free']},
+ my:{label:'MyAgent 智能模型',envKey:'MY_API_KEY',baseUrl:process.env.MY_BASE_URL||'',protocol:'openai',models:[process.env.MY_MODEL||'myrqvia']},
  openai:{label:'OpenAI',envKey:'OPENAI_API_KEY',baseUrl:'https://api.openai.com/v1',protocol:'openai',models:['gpt-4o','gpt-4o-mini','o3-mini']},
  deepseek:{label:'DeepSeek',envKey:'DEEPSEEK_API_KEY',baseUrl:'https://api.deepseek.com',protocol:'openai',models:['deepseek-chat','deepseek-reasoner']},
  claude:{label:'Claude',envKey:'ANTHROPIC_API_KEY',baseUrl:'https://api.anthropic.com',protocol:'anthropic',models:['claude-sonnet-4-5','claude-opus-4-1','claude-3-5-haiku-latest']},
@@ -127,9 +127,9 @@ async function executeTool(name:string,rawArgs:string,res:express.Response){
  }
  return {ok:false,error:'该工具不存在或未开放。'}
 }
-const hasGatewayAuth=(req:express.Request)=>Boolean(process.env.AI_GATEWAY_API_KEY||process.env.VERCEL_OIDC_TOKEN||(typeof req.headers['x-vercel-oidc-token']==='string'&&req.headers['x-vercel-oidc-token'].length>0))
-app.get('/api/health',(req,res)=>res.json({ok:true,configuredProviders:Object.entries(providers).filter(([id,p])=>id==='my'?hasGatewayAuth(req):Boolean(process.env[p.envKey])).length,tools:['calculator','get_current_time','web_search','run_code']}))
-app.get('/api/providers',(req,res)=>res.json({providers:Object.entries(providers).map(([id,p])=>({id,label:p.label,configured:id==='my'?hasGatewayAuth(req):Boolean(process.env[p.envKey]),models:p.models}))}))
+const hasHostedModel=()=>Boolean(process.env.MY_API_KEY?.trim()&&process.env.MY_BASE_URL?.trim())
+app.get('/api/health',(req,res)=>res.json({ok:true,configuredProviders:Object.entries(providers).filter(([id,p])=>id==='my'?hasHostedModel():Boolean(process.env[p.envKey])).length,tools:['calculator','get_current_time','web_search','run_code']}))
+app.get('/api/providers',(req,res)=>res.json({providers:Object.entries(providers).map(([id,p])=>({id,label:p.label,configured:id==='my'?hasHostedModel():Boolean(process.env[p.envKey]),models:p.models}))}))
 app.get('/api/tools',(_req,res)=>res.json({tools:[
  {id:'calculator',name:'计算器',description:'安全数学表达式计算',enabled:true,approval:false},
  {id:'get_current_time',name:'当前时间',description:'时区时间查询',enabled:true,approval:false},
@@ -164,17 +164,17 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
  const providerId=(requestedProvider||'my') as ProviderId
  const config=providers[providerId]
  if(!config)return res.status(400).json({error:'不支持的模型服务商。'})
- const gatewayAuth=providerId==='my'?(process.env.AI_GATEWAY_API_KEY||process.env.VERCEL_OIDC_TOKEN||(typeof req.headers['x-vercel-oidc-token']==='string'?req.headers['x-vercel-oidc-token']:'')):''
- const apiKey=providerId==='my'?gatewayAuth:(typeof sessionApiKey==='string'&&sessionApiKey.trim().length>0?sessionApiKey.trim():process.env[config.envKey])
+ const hostedApiKey=providerId==='my'?(process.env.MY_API_KEY||''):''
+ const apiKey=providerId==='my'?hostedApiKey:(typeof sessionApiKey==='string'&&sessionApiKey.trim().length>0?sessionApiKey.trim():process.env[config.envKey])
  if(!apiKey)return res.status(503).json({error:providerId==='my'?'平台模型服务暂未激活，请稍后重试或联系管理员。':config.label+' 尚未配置 API Key，请在服务端 .env 中填写 '+config.envKey+'。'})
  if(!Array.isArray(messages)||messages.length===0||messages.length>40)return res.status(400).json({error:'messages 必须是 1 到 40 条消息的数组。'})
  const safeMessages:ChatMessage[]=[]
  for(const m of messages){if(!['user','assistant','system'].includes(m?.role)||typeof m?.content!=='string')return res.status(400).json({error:'消息格式无效。'});safeMessages.push({role:m.role,content:m.content.slice(0,12000)})}
- const selectedModel=providerId==='my'?(process.env.AI_GATEWAY_MODEL||config.models[0]):String(model||config.models[0])
+ const selectedModel=providerId==='my'?(process.env.MY_MODEL||config.models[0]):String(model||config.models[0])
  if(!config.models.includes(selectedModel)&&!['custom','my'].includes(providerId))return res.status(400).json({error:'所选模型不属于当前服务商。'})
- const baseUrl=String(providerId==='my'?config.baseUrl:providerId==='custom'?requestedBaseUrl||config.baseUrl:config.baseUrl).trim().replace(/\/$/,'')
+ const baseUrl=String(providerId==='my'?process.env.MY_BASE_URL||'':providerId==='custom'?requestedBaseUrl||config.baseUrl:config.baseUrl).trim().replace(/\/$/,'')
  if(!baseUrl)return res.status(400).json({error:'模型服务地址未配置。'})
- try{const endpoint=new URL(baseUrl);if(!['https:','http:'].includes(endpoint.protocol)||endpoint.username||endpoint.password)return res.status(400).json({error:'API Base URL 必须是有效的 HTTP(S) 地址。'})}catch{return res.status(400).json({error:'API Base URL 格式无效，请检查地址。'})}
+ try{const endpoint=new URL(baseUrl);if(!['https:','http:'].includes(endpoint.protocol)||endpoint.username||endpoint.password)return res.status(400).json({error:'API Base URL 必须是有效的 HTTP(S) 地址。'});if(providerId==='my'&&process.env.VERCEL&&endpoint.protocol!=='https:')return res.status(400).json({error:'平台模型公网地址必须使用 HTTPS。'})}catch{return res.status(400).json({error:'API Base URL 格式无效，请检查地址。'})}
  const isClaude=config.protocol==='anthropic'
  const systemText=safeMessages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n')
  const chatMessages=safeMessages.filter(m=>m.role!=='system')
