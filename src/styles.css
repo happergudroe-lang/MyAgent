@@ -372,3 +372,23 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .message-attachment:hover{border-color:#b9c9de;background:#f0f5fb}
 .app-shell[data-theme=dark] .message-attachment{border-color:#3a485b;background:#202a37;color:#d0deef}
 @media(max-width:1100px){.sidebar-rail.rail-hidden{display:flex!important}}
+
+
+body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-select:none!important;transition:none!important}
+.workspace-tree{display:grid;gap:3px;padding:7px 0 10px;border-bottom:1px solid #eceef1}
+.workspace-tree button{height:32px;min-width:0;display:flex;align-items:center;gap:8px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#687384;text-align:left;font-size:12px}
+.workspace-tree button:hover,.workspace-tree button.active{background:#e9edf3;color:#2d3b50}
+.workspace-tree button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workspace-tree button small{color:#9aa3af;font-size:10px}
+.app-shell[data-theme=dark] .workspace-tree{border-color:#303744}
+.app-shell[data-theme=dark] .workspace-tree button{color:#b1bdcc}
+.app-shell[data-theme=dark] .workspace-tree button:hover,.app-shell[data-theme=dark] .workspace-tree button.active{background:#293443;color:#eef4fc}
+.app-shell[data-theme=dark] .main-nav{border-color:#303744}
+.app-shell[data-theme=dark] .main-nav button{color:#c4cedb}
+.app-shell[data-theme=dark] .main-nav button:hover{background:#293443;color:#fff}
+.app-shell[data-theme=dark] .history-head{color:#a8b3c2}
+.app-shell[data-theme=dark] .chat-list-item:hover,.app-shell[data-theme=dark] .chat-list-item.selected{background:#293443}
+.app-shell[data-theme=dark] .search-wrap input{color:#eef4fc}
+.app-shell[data-theme=dark] .icon-btn{color:#b1bdcc}
+.app-shell[data-theme=dark] .icon-btn:hover{background:#293443;color:#fff}
+.messages>.message-row{content-visibility:auto;contain-intrinsic-size:auto 150px}
