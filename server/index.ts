@@ -169,7 +169,7 @@ app.post('/api/chat',chatLimiter,async(req,res)=>{
  const safeMessages:ChatMessage[]=[]
  for(const m of messages){if(!['user','assistant','system'].includes(m?.role)||typeof m?.content!=='string')return res.status(400).json({error:'消息格式无效。'});safeMessages.push({role:m.role,content:m.content.slice(0,12000)})}
  const selectedModel=String(model||config.models[0])
- if(!config.models.includes(selectedModel)&&providerId!=='custom')return res.status(400).json({error:'所选模型不属于当前服务商。'})
+ if(!config.models.includes(selectedModel)&&!['custom','my'].includes(providerId))return res.status(400).json({error:'所选模型不属于当前服务商。'})
  const baseUrl=String((providerId==='my'||providerId==='custom')?requestedBaseUrl||config.baseUrl:config.baseUrl).trim().replace(/\/$/,'')
  if(!baseUrl)return res.status(400).json({error:providerId==='my'?'请先填写 My 自研模型的 API Base URL。':'请先设置 CUSTOM_BASE_URL。'})
  try{const endpoint=new URL(baseUrl);if(!['https:','http:'].includes(endpoint.protocol)||endpoint.username||endpoint.password)return res.status(400).json({error:'API Base URL 必须是有效的 HTTP(S) 地址。'})}catch{return res.status(400).json({error:'API Base URL 格式无效，请检查地址。'})}
