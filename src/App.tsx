@@ -90,7 +90,7 @@ const Workbench=memo(function Workbench({theme,onThemeChange,onClose}:WorkbenchP
    {!maximized&&visible.length===0&&<div className="workbench-empty"><LayoutGrid size={24}/><b>画布已清空</b><span>从上方工具栏添加一个窗格。</span></div>}
   </div>
  </aside>
-}
+})
 
 export default function App() {
  const [authUser,setAuthUser]=useState<{id:string,email:string,username:string}|null>(null)
@@ -162,6 +162,7 @@ export default function App() {
  const [messageFeedback,setMessageFeedback]=useState<Record<number,'up'|'down'>>({})
  const abortControllerRef=useRef<AbortController|null>(null)
  const resolvedTheme=themeMode==='system'?(systemDark?'dark':'light'):themeMode
+ const closeWorkbench=useCallback(()=>setRightOpen(false),[])
 
  useEffect(()=>{try{localStorage.setItem('myagent:layout:left',String(leftWidth));localStorage.setItem('myagent:layout:right',String(rightWidth));localStorage.setItem('myagent:theme',themeMode)}catch{}},[leftWidth,rightWidth,themeMode])
  useEffect(()=>{const media=window.matchMedia('(prefers-color-scheme: dark)');const update=()=>setSystemDark(media.matches);update();media.addEventListener?.('change',update);return()=>media.removeEventListener?.('change',update)},[])
