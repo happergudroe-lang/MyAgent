@@ -917,3 +917,10 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .app-shell .sidebar-workspace-section,.app-shell .history-head,.app-shell .sidebar-nav-caption{letter-spacing:.01em}
 .app-shell .modal-header h2{font-size:20px;font-weight:500;line-height:1.25}
 .app-shell .modal-header p{font-size:13px;line-height:1.6;color:var(--ink-weak)}
+
+.slash-command-menu{position:absolute;left:14px;bottom:calc(100% - 4px);z-index:45;width:min(260px,calc(100% - 28px));display:grid;gap:2px;padding:8px;border:1px solid var(--panel-border);border-radius:12px;background:var(--ink-card);color:var(--ink-text)}
+.slash-command-menu>span{padding:4px 7px 6px;color:var(--ink-weak);font-size:10px}
+.slash-command-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;padding:0 8px;border:0;border-radius:7px;background:transparent;color:var(--ink-text);text-align:left}
+.slash-command-menu button:hover{background:var(--ink-raised)}
+.slash-command-menu button b{font-size:12px;font-weight:500}
+.slash-command-menu button small{font-size:11px;color:var(--ink-weak)}
