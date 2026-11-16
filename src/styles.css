@@ -396,3 +396,8 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 
 .workbench-grid.is-maximized .work-pane{grid-column:1/-1;grid-row:1/-1}
 .workbench-grid.is-maximized .pane-splitter{display:none}
+
+
+/* Keep all three columns within the available desktop width */
+.main-area{min-width:0}
+.app-shell{container-type:inline-size}
