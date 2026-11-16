@@ -211,11 +211,14 @@ export default function App() {
    <div className="brand-row"><div className="brand-mark"><Sparkles/></div><b>MyAgent</b><button className="icon-btn push" onClick={()=>setLeft(false)} aria-label="收起侧栏"><Menu/></button></div>
    <button className="new-chat" onClick={()=>void newChat()}><Plus/>新建对话 <kbd>Ctrl N</kbd></button>
    <section className="sidebar-workspace-section"><div className="sidebar-section-head"><span>工作区</span><button onClick={()=>setModal('workspaces')}><Plus size={13}/>管理</button></div><button className="sidebar-workspace-current" onClick={()=>setModal('workspaces')}><span className="sidebar-workspace-icon"><Folder size={16}/></span><span className="sidebar-workspace-copy"><b>{activeWorkspace?activeWorkspace.name:'所有对话'}</b><small>{activeWorkspace?'当前项目工作区':'查看全部聊天记录'}</small></span><ChevronDown size={15}/></button></section>
+   <div className="workspace-tree"><button className={!activeWorkspaceId?'active':''} onClick={()=>void selectWorkspace(null)}><Folder size={14}/><span>所有对话</span><small>{chats.filter(c=>!c.workspaceId).length}</small></button>{workspaces.map(w=><button key={w.id} className={activeWorkspaceId===w.id?'active':''} onClick={()=>void selectWorkspace(w.id)}><BriefcaseBusiness size={14}/><span>{w.name}</span><small>{chats.filter(c=>c.workspaceId===w.id).length}</small></button>)}</div>
    <div className="sidebar-nav-caption">工具与探索</div>
    <nav className="main-nav">
+    <button onClick={()=>setModal('skills')}><BookOpen/>插件与 Skills</button>
+    <button onClick={()=>showToast('当前版本尚未接入自动化任务执行引擎，不会显示虚假的任务列表。')}><Zap/>自动化任务</button>
     <button onClick={()=>setModal('agents')}><LayoutGrid/>Agent 市场</button>
-     <button onClick={()=>setModal('settings')}><Settings2/>模型与工具</button>
-    <button onClick={()=>setModal('about')}><MoreHorizontal/>关于 MyAgent</button>
+    <button onClick={()=>setModal('settings')}><Settings2/>模型与工具</button>
+    <button onClick={()=>setModal('about')}><MoreHorizontal/>更多</button>
    </nav>
    <div className="history-head"><span>聊天记录</span><span>{visibleChats.length}</span></div>
    <div className="search-wrap"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜索聊天记录"/></div>
