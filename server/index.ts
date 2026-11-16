@@ -23,7 +23,8 @@ async function ensureWorkspaceSchema(){await query(`CREATE TABLE IF NOT EXISTS p
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
-const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})\nconst externalApiLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',legacyHeaders:false,message:{error:{message:'Rate limit exceeded.',type:'rate_limit_error'}}})
+const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})
+const externalApiLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',legacyHeaders:false,message:{error:{message:'Rate limit exceeded.',type:'rate_limit_error'}}})
 function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
 function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
 function clearSessionCookie(res:express.Response){res.setHeader('Set-Cookie',COOKIE+'=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'+(process.env.NODE_ENV==='production'?'; Secure':''))}
