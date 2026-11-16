@@ -117,3 +117,54 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
  .my-priority{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){button{transition:none!important}}
+
+
+/* Conversation typography and spacing — consistent reading rhythm */
+.chat-stage{padding:0 clamp(18px,3.2vw,42px)}
+.messages{width:min(100%,860px);padding:clamp(26px,4vh,42px) 0 30px;gap:30px}
+.message-row{gap:13px;max-width:100%;align-items:flex-start}
+.message-row.assistant .message-avatar{width:32px;height:32px;flex-basis:32px;margin-top:1px;background:#f0f2f5;color:#526174}
+.message-row .message-content{min-width:0;max-width:calc(100% - 45px);flex:1;padding-top:1px}
+.message-row.user{justify-content:flex-end;gap:0}
+.message-row.user .message-avatar{display:none}
+.message-row.user .message-content{flex:0 1 auto;width:auto;max-width:min(78%,680px);padding:12px 16px;border:1px solid #e9ebef;border-radius:19px 19px 6px 19px;background:#f4f5f7}
+.message-row.user .message-heading{display:none}
+.message-row.user .markdown-body{font-size:15px;line-height:1.7;color:#30343a}
+.message-row.user .markdown-body p{margin:0;white-space:pre-wrap}
+.message-row.assistant .message-heading{margin:1px 0 10px;gap:9px}
+.message-row.assistant .message-heading b{font-size:14px;letter-spacing:.05px}
+.message-row.assistant .markdown-body{font-size:15.5px;line-height:1.82;color:#30343b}
+.message-row.assistant .markdown-body h1{font-size:25px;margin:24px 0 12px}
+.message-row.assistant .markdown-body h2{font-size:21px;margin:22px 0 10px}
+.message-row.assistant .markdown-body h3{font-size:17px;margin:18px 0 8px}
+.message-row.assistant .markdown-body p{margin:9px 0}
+.message-row.assistant .markdown-body ul,.message-row.assistant .markdown-body ol{padding-left:23px;margin:10px 0}
+.message-row.assistant .markdown-body li{padding:3px 0}
+.message-row.assistant .markdown-body pre{margin:13px 0 16px;border-radius:14px;padding:16px 18px}
+.message-row.assistant .markdown-body table{font-size:13px;line-height:1.55;border-radius:10px}
+.thinking-row{width:min(100%,860px);margin:0 auto;padding-left:45px}
+.composer-wrap{width:min(100%,900px);padding:12px 0 17px}
+.composer{border-radius:20px;box-shadow:0 7px 28px rgba(25,30,40,.055),0 1px 3px rgba(25,30,40,.04)}
+.composer-hint{font-size:11px;padding-top:9px}
+.home-stage{width:min(100%,820px);padding:clamp(24px,5vh,54px) 0 36px}
+.home-copy{width:min(100%,720px);margin-bottom:29px}
+.starter-grid{width:min(100%,720px);gap:13px}
+.starter-card{min-height:116px}
+.auth-screen{overflow:hidden;background:radial-gradient(ellipse at 50% 38%,#f5f7fa 0%,#fff 62%)}
+.auth-card{box-shadow:0 24px 80px rgba(28,37,52,.09),0 2px 10px rgba(28,37,52,.035);border-color:rgba(225,229,235,.9)}
+.auth-screen-loading .auth-card{border-color:rgba(225,229,235,.72)}
+.auth-loading-indicator{width:24px;height:24px;margin:0 auto 18px;border:2px solid #e8ebf0;border-top-color:#53647c;border-radius:50%;animation:auth-spin .85s linear infinite}
+.auth-loading .brand-mark{margin-bottom:15px}
+.auth-loading h1{font-size:23px}
+.auth-loading p{color:#89919d;font-size:13px}
+.app-shell-enter{will-change:opacity,transform;transform-origin:center}
+@keyframes auth-spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){
+ .chat-stage{padding:0 14px}
+ .messages{gap:23px;padding-top:22px}
+ .message-row.user .message-content{max-width:88%;padding:11px 14px}
+ .message-row.assistant .markdown-body{font-size:15px;line-height:1.78}
+ .composer-wrap{padding:8px 0 12px}
+ .home-stage{padding-top:32px}
+}
+@media(prefers-reduced-motion:reduce){.auth-loading-indicator{animation:none}}
