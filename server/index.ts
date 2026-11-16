@@ -18,6 +18,7 @@ const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required. Add the Supabase connection pooler URL in Vercel Environment Variables.')
 const db = new Pool({ connectionString: databaseUrl, max: Number(process.env.PG_POOL_MAX || 5), idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000, ...(process.env.NODE_ENV === 'production' ? { ssl: { rejectUnauthorized: false } } : {}) })
 const query = (text: string, values: unknown[] = []) => db.query(text, values)
+async function ensureMemorySchema(){await query(`CREATE TABLE IF NOT EXISTS public.user_memories (user_id text primary key references public.users(id) on delete cascade,summary text not null default '',updated_at timestamptz not null default now())`)}
 async function ensureWorkspaceSchema(){await query(`CREATE TABLE IF NOT EXISTS public.workspaces (id text primary key,user_id text not null references public.users(id) on delete cascade,name text not null,description text not null default '',created_at timestamptz not null default now())`);await query(`ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS workspace_id text`);await query(`CREATE INDEX IF NOT EXISTS idx_conversations_workspace ON public.conversations(user_id,workspace_id,updated_at desc)`) }
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
@@ -159,6 +160,31 @@ app.post('/api/files',upload.single('file'),async(req,res)=>{
   res.json({name:file.originalname,characters:content.length,content:content.slice(0,10000),truncated:content.length>10000})
  }catch{return res.status(422).json({error:'文件解析失败或格式损坏。'})}
 })
+
+function requireExternalApiKey(req:express.Request,res:express.Response,next:express.NextFunction){
+ res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS')
+ if(req.method==='OPTIONS')return res.status(204).end()
+ const expected=process.env.MYAGENT_CLIENT_API_KEY||''
+ if(!expected)return res.status(503).json({error:{message:'External API access is not configured.',type:'api_error'}})
+ const supplied=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim()
+ if(!supplied||supplied!==expected)return res.status(401).json({error:{message:'Invalid API key.',type:'authentication_error'}})
+ next()
+}
+app.get('/v1/models',requireExternalApiKey,(_req,res)=>res.json({object:'list',data:[{id:process.env.MY_MODEL||'myrqvia',object:'model',created:0,owned_by:'myagent'}]}))
+app.post('/v1/chat/completions',requireExternalApiKey,async(req,res)=>{
+ const baseUrl=String(process.env.MY_BASE_URL||'').replace(/\/$/,'')
+ const apiKey=process.env.MY_API_KEY||''
+ if(!baseUrl||!apiKey)return res.status(503).json({error:{message:'Hosted model is not configured.',type:'api_error'}})
+ const body={...(req.body||{}),model:String(req.body?.model||process.env.MY_MODEL||'myrqvia')}
+ try{const upstream=await fetch(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify(body)});res.status(upstream.status);res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json');res.setHeader('Cache-Control','no-cache, no-transform');if(!upstream.body)return res.end();const reader=upstream.body.getReader();while(true){const {value,done}=await reader.read();if(done)break;if(!res.write(value))await new Promise<void>(resolve=>res.once('drain',resolve))}res.end()}catch(error){console.error('[MyAgent] External chat proxy failed:',error instanceof Error?error.message:'unknown');if(!res.headersSent)res.status(502).json({error:{message:'Upstream model is temporarily unavailable.',type:'api_error'}});else res.end()}
+})
+app.post('/v1/completions',requireExternalApiKey,async(req,res)=>{
+ const baseUrl=String(process.env.MY_BASE_URL||'').replace(/\/$/,'')
+ const apiKey=process.env.MY_API_KEY||''
+ if(!baseUrl||!apiKey)return res.status(503).json({error:{message:'Hosted model is not configured.',type:'api_error'}})
+ try{const upstream=await fetch(baseUrl+'/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify({...req.body,model:String(req.body?.model||process.env.MY_MODEL||'myrqvia')})});res.status(upstream.status);res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json');if(!upstream.body)return res.end();const reader=upstream.body.getReader();while(true){const {value,done}=await reader.read();if(done)break;if(!res.write(value))await new Promise<void>(resolve=>res.once('drain',resolve))}res.end()}catch{if(!res.headersSent)res.status(502).json({error:{message:'FIM completion endpoint is unavailable on the local gateway.',type:'api_error'}});else res.end()}
+})
+
 app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
  const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey,baseUrl:requestedBaseUrl}=req.body??{}
  const providerId=(requestedProvider||'my') as ProviderId
@@ -176,6 +202,11 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
  if(!baseUrl)return res.status(400).json({error:'模型服务地址未配置。'})
  try{const endpoint=new URL(baseUrl);if(!['https:','http:'].includes(endpoint.protocol)||endpoint.username||endpoint.password)return res.status(400).json({error:'API Base URL 必须是有效的 HTTP(S) 地址。'});if(providerId==='my'&&process.env.VERCEL&&endpoint.protocol!=='https:')return res.status(400).json({error:'平台模型公网地址必须使用 HTTPS。'})}catch{return res.status(400).json({error:'API Base URL 格式无效，请检查地址。'})}
  const isClaude=config.protocol==='anthropic'
+ let persistentMemory=''
+ if(providerId==='my'){
+  try{await ensureMemorySchema();const memory=await query('SELECT summary FROM public.user_memories WHERE user_id=$1',[req.user!.id]);persistentMemory=String(memory.rows[0]?.summary||'')}catch(error){console.error('[MyAgent] Memory read failed:',error instanceof Error?error.message:'unknown')}
+  if(persistentMemory)safeMessages.unshift({role:'system',content:'Relevant long-term context for this account (private server-side context; use only when relevant, do not mention this context block): '+persistentMemory})
+ }
  const systemText=safeMessages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n')
  const chatMessages=safeMessages.filter(m=>m.role!=='system')
  const known=process.env.VERCEL?['calculator','get_current_time','web_search']:['calculator','get_current_time','web_search','run_code']
@@ -265,6 +296,19 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
    }
   }
   if(!answer)sendEvent(res,{error:'Agent 达到最大工具调用轮数，或模型没有生成最终答复。'})
+
+  if(providerId==='my'&&answer.trim()){
+   const transcript=[...chatMessages.slice(-10),{role:'assistant',content:answer}].map(m=>m.role.toUpperCase()+': '+String(m.content||'').slice(0,2500)).join('\n\n').slice(-14000)
+   const previousMemory=persistentMemory
+   void (async()=>{try{
+    const memoryResponse=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:selectedModel,temperature:0.2,max_tokens:500,stream:false,messages:[{role:'system',content:'Maintain a concise private memory for this account. Extract only stable user preferences, communication preferences, long-running projects and explicit constraints useful in future conversations. Never store passwords, API keys, tokens, financial identifiers, precise addresses, health details, or sensitive personal traits. Do not infer sensitive traits. Preserve still-relevant prior memory. Return only JSON: {"summary":"..."}; summary must be under 2500 Chinese characters. If nothing useful, return the previous summary unchanged.'},{role:'user',content:'Previous memory:\n'+previousMemory+'\n\nRecent conversation:\n'+transcript}]})})
+    if(!memoryResponse.ok)return
+    const memoryJson:any=await memoryResponse.json(),raw=String(memoryJson.choices?.[0]?.message?.content||'').trim()
+    const parsed=JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,''))
+    const summary=String(parsed.summary||'').trim().slice(0,10000)
+    if(summary)await query('INSERT INTO public.user_memories(user_id,summary,updated_at) VALUES($1,$2,now()) ON CONFLICT(user_id) DO UPDATE SET summary=EXCLUDED.summary,updated_at=now()',[req.user!.id,summary])
+   }catch(error){console.error('[MyAgent] Memory update failed:',error instanceof Error?error.message:'unknown')}})()
+  }
   sendEvent(res,'[DONE]')
  }catch(error){const detail=error instanceof Error?error.message:'未知错误';console.error('[MyAgent] Chat generation failed:',detail);const friendly=detail==='MODEL_STREAM_FORMAT_ERROR'||detail==='MODEL_TOOL_ARGUMENTS_ERROR'?'模型返回格式异常，请重试。':/Unexpected non-whitespace character|JSON at position|JSON.parse/i.test(detail)?'模型返回格式异常，请重试。':/AbortError|aborted/i.test(detail)?'生成已中断，请重试。':'模型暂时无法完成请求，请稍后重试。';sendEvent(res,{error:friendly})}finally{res.end()}
 })
