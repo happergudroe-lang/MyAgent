@@ -363,3 +363,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .app-shell[data-theme=dark] .work-pane-header button:hover,.app-shell[data-theme=dark] .workbench-actions button:hover,.app-shell[data-theme=dark] .workbench-layouts button:hover,.app-shell[data-theme=dark] .workbench-theme:hover,.app-shell[data-theme=dark] .workbench-close:hover{background:#354253;color:#fff}
 .app-shell[data-theme=dark] .workbench-layouts button.active{background:#33465e;color:#e2edfb;box-shadow:inset 0 0 0 1px #506b8d}
 .app-shell[data-theme=dark] .auth-screen{background:#11161e}
+
+
+.sidebar-rail.rail-hidden{display:none}
+.sidebar-rail + .left-resizer{display:none}
+.message-attachment{display:inline-flex;align-items:center;gap:7px;max-width:min(100%,340px);margin:8px 0 3px;padding:8px 10px;border:1px solid #e3e8ef;border-radius:10px;background:#f8fafc;color:#4c5f79;font-size:12px;text-align:left}
+.message-attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.message-attachment:hover{border-color:#b9c9de;background:#f0f5fb}
+.app-shell[data-theme=dark] .message-attachment{border-color:#3a485b;background:#202a37;color:#d0deef}
+@media(max-width:1100px){.sidebar-rail.rail-hidden{display:flex!important}}
