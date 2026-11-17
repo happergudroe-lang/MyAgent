@@ -20,10 +20,14 @@ function labelFor(id: VoiceProviderId) { return ({ local: 'VoiceStudio 本地', 
 function jsonError(payload: any, fallback: string) { return String(payload?.error?.message || payload?.detail || payload?.message || payload?.error || fallback) }
 async function request(url: string, init: RequestInit = {}, timeoutMs = 30000) {
   const controller = new AbortController()
+  const externalSignal = init.signal
+  const abortFromCaller = () => controller.abort()
+  if (externalSignal?.aborted) controller.abort()
+  else externalSignal?.addEventListener('abort', abortFromCaller, { once:true })
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try { return await fetch(url, { ...init, signal: controller.signal }) }
-  catch (error) { if (controller.signal.aborted) throw new Error('语音服务请求超时'); throw error }
-  finally { clearTimeout(timer) }
+  catch (error) { if (externalSignal?.aborted) throw new Error('语音请求已被客户端中断'); if (controller.signal.aborted) throw new Error('语音服务请求超时'); throw error }
+  finally { clearTimeout(timer); externalSignal?.removeEventListener('abort', abortFromCaller) }
 }
 function missingKey(id: VoiceProviderId) { return new Error(labelFor(id) + '尚未配置服务端 API Key。请在部署平台设置对应环境变量。') }
 async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 30000) {
@@ -85,17 +89,17 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:'未知语音 Provider。', latencyMs:Date.now()-started }
 }
 
-export async function synthesizeVoice(text: string, voiceId: string): Promise<Response> {
-  if (provider === 'local') return localRequest(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}) }, 180000)
+export async function synthesizeVoice(text: string, voiceId: string, signal?: AbortSignal): Promise<Response> {
+  if (provider === 'local') return localRequest(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}),signal }, 180000)
   if (provider === 'openai') {
     if (!openAiKey) throw missingKey(provider)
     if (!openAiVoices.includes(voiceId)) throw new Error('所选音色不属于 OpenAI 预设音色。')
     if (text.length > 4096) throw new Error('OpenAI Speech API 单次文本上限为 4096 字符。')
-    return request('https://api.openai.com/v1/audio/speech', { method:'POST', headers:{Authorization:'Bearer '+openAiKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.OPENAI_TTS_MODEL||'gpt-4o-mini-tts',voice:voiceId,input:text,instructions:process.env.OPENAI_TTS_INSTRUCTIONS||'Speak naturally and conversationally. Use clear, warm, expressive delivery.',response_format:'mp3'}) }, 180000)
+    return request('https://api.openai.com/v1/audio/speech', { method:'POST', headers:{Authorization:'Bearer '+openAiKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.OPENAI_TTS_MODEL||'gpt-4o-mini-tts',voice:voiceId,input:text,instructions:process.env.OPENAI_TTS_INSTRUCTIONS||'Speak naturally and conversationally. Use clear, warm, expressive delivery.',response_format:'mp3'}),signal }, 180000)
   }
   if (provider === 'minimax') {
     if (!minimaxKey || !minimaxGroupId) throw new Error('MiniMax 需要同时配置 MINIMAX_API_KEY 和 MINIMAX_GROUP_ID。')
-    const response = await request('https://api.minimaxi.com/v1/t2a_v2?GroupId='+encodeURIComponent(minimaxGroupId), { method:'POST', headers:{Authorization:'Bearer '+minimaxKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.MINIMAX_TTS_MODEL||'speech-2.8-turbo',text,stream:false,voice_setting:{voice_id:voiceId,speed:1,vol:1,pitch:0},audio_setting:{sample_rate:32000,bitrate:128000,format:'mp3',channel:1}}) }, 180000)
+    const response = await request('https://api.minimaxi.com/v1/t2a_v2?GroupId='+encodeURIComponent(minimaxGroupId), { method:'POST', headers:{Authorization:'Bearer '+minimaxKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.MINIMAX_TTS_MODEL||'speech-2.8-turbo',text,stream:false,voice_setting:{voice_id:voiceId,speed:1,vol:1,pitch:0},audio_setting:{sample_rate:32000,bitrate:128000,format:'mp3',channel:1}}),signal }, 180000)
     const payload:any = await response.json().catch(()=>({}))
     if (!response.ok || Number(payload?.base_resp?.status_code||0)!==0) throw new Error(jsonError(payload?.base_resp||payload,'MiniMax TTS 请求失败'))
     const hex = payload?.data?.audio
@@ -105,11 +109,11 @@ export async function synthesizeVoice(text: string, voiceId: string): Promise<Re
   if (provider === 'fish') {
     if (!fishKey) throw missingKey(provider)
     if (!voiceId) throw new Error('Fish Audio 需要先创建或选择一个 voice model。')
-    return request('https://api.fish.audio/v1/tts', { method:'POST', headers:{Authorization:'Bearer '+fishKey,'Content-Type':'application/json','model':process.env.FISH_AUDIO_MODEL||'s2.1-pro-free'}, body:JSON.stringify({text,reference_id:voiceId,format:'mp3',prosody:{speed:1,volume:0,normalize_loudness:true},normalize:true,latency:'balanced',condition_on_previous_chunks:true}) }, 180000)
+    return request('https://api.fish.audio/v1/tts', { method:'POST', headers:{Authorization:'Bearer '+fishKey,'Content-Type':'application/json','model':process.env.FISH_AUDIO_MODEL||'s2.1-pro-free'}, body:JSON.stringify({text,reference_id:voiceId,format:'mp3',prosody:{speed:1,volume:0,normalize_loudness:true},normalize:true,latency:'balanced',condition_on_previous_chunks:true}),signal }, 180000)
   }
   if (provider === 'elevenlabs') {
     if (!elevenKey) throw missingKey(provider)
-    return request('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(voiceId), { method:'POST', headers:{'xi-api-key':elevenKey,'Content-Type':'application/json','Accept':'audio/mpeg'}, body:JSON.stringify({text,model_id:process.env.ELEVENLABS_MODEL_ID||'eleven_multilingual_v2',voice_settings:{stability:0.45,similarity_boost:0.8,style:0.25,use_speaker_boost:true}}) }, 180000)
+    return request('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(voiceId), { method:'POST', headers:{'xi-api-key':elevenKey,'Content-Type':'application/json','Accept':'audio/mpeg'}, body:JSON.stringify({text,model_id:process.env.ELEVENLABS_MODEL_ID||'eleven_multilingual_v2',voice_settings:{stability:0.45,similarity_boost:0.8,style:0.25,use_speaker_boost:true}}),signal }, 180000)
   }
   throw new Error(labelFor(provider)+' TTS 适配器当前不可用。')
 }
