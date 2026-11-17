@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MyAgent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5694FF"/>
+      <stop offset="1" stop-color="#1B4AE2"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.28" cy="0.12" r="1.1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="120" fill="url(#hl)"/>
+  <!-- 四角星品牌标记 -->
+  <path filter="url(#glow)" fill="#FFFFFF"
+        d="M256 88 C266 190 300 224 402 234 C300 244 266 278 256 380 C246 278 212 244 110 234 C212 224 246 190 256 88 Z"/>
+  <!-- 轨道点 -->
+  <circle cx="398" cy="362" r="26" fill="#FFFFFF" opacity="0.95"/>
+</svg>
