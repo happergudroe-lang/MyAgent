@@ -69,13 +69,16 @@ function parseMessage(xml: string): WeComMessage | null {
   const msgType = xmlValue(xml, 'MsgType').toLowerCase()
   if (msgType !== 'text') return null
   const content = xmlValue(xml, 'Content')
-  const mention = content.match(/^\\s*@([^\\s,，:：]+)\\s*([\\s\\S]*)$/)
-  const command = content.match(/^\\s*\/agent\\s+([^\\s]+)\\s*([\\s\\S]*)$/i)
+  const mention = content.match(/^\s*@([^\s,，:：]+)\s*([\s\S]*)$/)
+  const command = content.match(/^\s*\/agent(?:\s+([\s\S]*))?$/i)
   if (!mention && !command) return null
+  const commandBody = (command?.[1] || '').trim()
+  const commandParts = commandBody.match(/^([^\s]+)\s+([\s\S]*)$/)
+  const commandHasAgent = Boolean(commandParts && (aliases[commandParts[1].toLowerCase()] || aliases[commandParts[1]]))
   return {
     toUser: xmlValue(xml, 'ToUserName'), fromUser: xmlValue(xml, 'FromUserName'), chatId: xmlValue(xml, 'ChatId') || xmlValue(xml, 'FromUserName'),
-    createTime: xmlValue(xml, 'CreateTime'), msgType, content: (mention?.[2] ?? command?.[2] ?? '').trim(),
-    agentName: mention?.[1] ?? command?.[1] ?? '', msgId: xmlValue(xml, 'MsgId')
+    createTime: xmlValue(xml, 'CreateTime'), msgType, content: (mention?.[2] ?? (commandHasAgent ? commandParts![2] : commandBody)).trim(),
+    agentName: mention?.[1] ?? (commandHasAgent ? commandParts![1] : ''), msgId: xmlValue(xml, 'MsgId')
   }
 }
 const aliases: Record<string, { provider: string; model?: string }> = {
