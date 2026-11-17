@@ -10,7 +10,7 @@ The browser never connects directly to a developer's laptop. The authenticated M
 | `openai` | OpenAI Speech API | OpenAI transcription | No | `OPENAI_API_KEY` |
 | `elevenlabs` | ElevenLabs | ElevenLabs Scribe | Instant Voice Clone | `ELEVENLABS_API_KEY` |
 | `minimax` | MiniMax T2A v2 | Not yet supported | Not yet supported | `MINIMAX_API_KEY`, `MINIMAX_GROUP_ID` |
-| `fish` | Not yet supported | Not yet supported | Not yet supported | Reserved adapter slot; currently reports unavailable |
+| `fish` | Fish Audio TTS | Not yet supported | Private voice-model creation | `FISH_AUDIO_API_KEY`, optional `FISH_AUDIO_VOICE_ID` |
 
 Unsupported capabilities return explicit errors and are not silently routed to another provider.
 
@@ -44,7 +44,7 @@ The Speech API currently documents 13 built-in voices. They are presets, not use
 
 ElevenLabs account tier, verification, usage quota, and regional availability can affect voice-library and cloning access. A configured key is not a promise of unlimited concurrency.
 
-## MiniMax TTS
+## Fish Audio TTS and private voice models\n\nSet `VOICE_PROVIDER=fish` and `FISH_AUDIO_API_KEY`. MyAgent loads private voice models from the Fish Audio account, supports creating a private TTS model from an uploaded recording, and synthesizes through the Fish Audio TTS API. Optionally set `FISH_AUDIO_VOICE_ID` as a preset/default model ID. Fish Audio ASR is not wired into this adapter yet; recording is therefore disabled in this mode, while TTS and voice creation remain available.\n\n## MiniMax TTS
 
 Set `VOICE_PROVIDER=minimax`, `MINIMAX_API_KEY`, and the account's `MINIMAX_GROUP_ID`. The current adapter calls the synchronous T2A v2 endpoint and exposes the documented preset voice IDs. ASR and cloning are not implemented in this adapter yet, so the UI disables recording and cloning rather than showing a false full-duplex experience. A future adapter can add the provider's rapid voice cloning and transcription APIs without changing the public MyAgent route contract.
 
