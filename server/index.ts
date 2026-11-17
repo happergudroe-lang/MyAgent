@@ -131,7 +131,7 @@ app.post('/api/voice/clone', requireAuth, upload.single('audio'), async (req: an
   const status = await getVoiceProviderStatus()
   if (!status.cloneSupported) return res.status(409).json({error:status.provider==='openai'?'OpenAI 预设 TTS 音色不支持任意音色克隆。':(status.error || status.providerLabel+' 不支持音色克隆。')})
   const profile = await cloneVoiceProfile(req.file.buffer, req.file.mimetype || 'audio/webm', req.file.originalname || 'reference.webm', name)
-  const config = {...readVoiceConfig(),profileId:profile.id,profileName:profile.name}; writeVoiceConfig(config); res.json({profile,config})
+  const config = {...readVoiceConfig(),profileId:profile.id,profileName:profile.name}; res.json({profile,config})
  } catch(error) { res.status(502).json({error:voiceError(error)}) }
 })
 
