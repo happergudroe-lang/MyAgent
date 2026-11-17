@@ -113,16 +113,18 @@ app.post('/api/voice/tts', requireAuth, async (req, res) => {
  const input = String(req.body?.text || '').trim()
  if (!input) return res.status(400).json({ error: '缺少待播报文本。' })
  if (input.length > 12000) return res.status(400).json({ error: '播报文本过长。' })
- const config = readVoiceConfig(), voice = String(req.body?.profileId || config.profileId), started = Date.now()
+ const config = readVoiceConfig(), voice = String(req.body?.profileId || config.profileId), started = Date.now(), controller = new AbortController()
+ res.on('close', () => { if (!res.writableEnded) controller.abort() })
+ req.on('aborted', () => controller.abort())
  try {
-  const upstream = await synthesizeVoice(input, voice)
+  const upstream = await synthesizeVoice(input, voice, controller.signal)
   if (!upstream.ok) { const detail = await upstream.text().catch(() => ''); return res.status(upstream.status).json({ error: detail.slice(0,1000) || '语音合成请求失败' }) }
   res.status(200); res.setHeader('Content-Type', upstream.headers.get('content-type') || 'audio/mpeg'); res.setHeader('X-Voice-TTS-Latency-Ms', String(Date.now()-started)); res.setHeader('Cache-Control','no-store')
   if (!upstream.body) return res.end()
   const reader = upstream.body.getReader()
   try { while (true) { const {value,done}=await reader.read(); if(done) break; if(value && !res.write(value)) await new Promise<void>(resolve=>res.once('drain',resolve)) } res.end() }
   catch(error) { console.error('[MyAgent] Voice TTS stream failed:',voiceError(error)); if(!res.headersSent)res.status(502).json({error:'TTS 音频流中断'});else res.end() }
- } catch(error) { if(!res.headersSent)res.status(502).json({error:voiceError(error),latencyMs:Date.now()-started});else res.end() }
+ } catch(error) { if (res.destroyed) return; if(!res.headersSent)res.status(502).json({error:voiceError(error),latencyMs:Date.now()-started});else res.end() }
 })
 app.post('/api/voice/clone', requireAuth, upload.single('audio'), async (req: any, res) => {
  const name = String(req.body?.name || '').trim().slice(0,80)
