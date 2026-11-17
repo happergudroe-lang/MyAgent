@@ -71,7 +71,8 @@ function parseMessage(xml: string): WeComMessage | null {
   const content = xmlValue(xml, 'Content')
   const mention = content.match(/^\s*@([^\s,，:：]+)\s*([\s\S]*)$/)
   const command = content.match(/^\s*\/agent(?:\s+([\s\S]*))?$/i)
-  if (!mention && !command) return null
+  const approvalCommand = content.match(/^\\s*(批准|拒绝)\\s+[0-9a-f-]{36}\\s*$/i)
+  if (!mention && !command && !approvalCommand) return null
   const commandBody = (command?.[1] || '').trim()
   const commandParts = commandBody.match(/^([^\s]+)\s+([\s\S]*)$/)
   const commandHasAgent = Boolean(commandParts && (aliases[commandParts[1].toLowerCase()] || aliases[commandParts[1]]))
