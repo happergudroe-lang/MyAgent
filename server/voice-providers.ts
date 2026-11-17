@@ -127,7 +127,7 @@ export async function transcribeVoice(buffer: Buffer, mimeType: string, filename
   }
   if (provider === 'openai') {
     if(!openAiKey) throw missingKey(provider)
-    form.append('model',process.env.OPENAI_ASR_MODEL||'gpt-4o-mini-transcribe')
+    form.append('model',process.env.OPENAI_ASR_MODEL||'gpt-transcribe')
     form.append('response_format','json')
     const response=await request('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+openAiKey},body:form},180000)
     const payload:any=await response.json().catch(()=>({}))
