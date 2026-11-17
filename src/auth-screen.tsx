@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import './auth-screen.css'
 
@@ -19,6 +19,7 @@ const progressFor: Record<Step, number> = {
   success: 3,
 }
 const spring = { type: 'spring' as const, stiffness: 340, damping: 20, mass: 0.85 }
+const buttonFeedbackSpring = { type: 'spring' as const, stiffness: 520, damping: 28 }
 const stepVariants = {
   enter: (direction: number) => ({ opacity: 0, x: direction * 46, scale: 0.97, rotate: direction * 0.6 }),
   center: { opacity: 1, x: 0, scale: 1, rotate: 0 },
@@ -26,6 +27,7 @@ const stepVariants = {
 }
 
 export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) {
+  const prefersReducedMotion = useReducedMotion()
   const [step, setStep] = useState<Step>('email')
   const [direction, setDirection] = useState(1)
   const [email, setEmail] = useState('')
@@ -36,6 +38,16 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser | null>(null)
+
+  const reducedStepVariants = {
+    enter: (stepDirection: number) => ({ opacity: 0, x: stepDirection * 18, scale: 0.985 }),
+    center: { opacity: 1, x: 0, scale: 1 },
+    exit: (stepDirection: number) => ({ opacity: 0, x: stepDirection * -18, scale: 0.985 }),
+  }
+  const activeStepVariants = prefersReducedMotion ? reducedStepVariants : stepVariants
+  const activeStepTransition = prefersReducedMotion
+    ? { type: 'spring' as const, stiffness: 460, damping: 27, mass: 0.8 }
+    : spring
 
   const passwordStrength = useMemo(() => {
     const checks = [password.length >= 10, /[a-z]/.test(password) && /[A-Z]/.test(password), /\\d/.test(password), /[^A-Za-z0-9]/.test(password)]
@@ -178,16 +190,18 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
                 '身份验证成功，正在为你打开工作空间。'}</p>
             </div>
 
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div key={step} className="auth-step" custom={direction} variants={stepVariants}
-                initial="enter" animate="center" exit="exit" transition={spring}>
+            <motion.div key={step} className="auth-step" custom={direction} variants={activeStepVariants}
+              initial="enter" animate="center" transition={activeStepTransition}>
                 {step === 'email' && <form onSubmit={checkEmail}>
                   <label className="auth-field">
                     <span className="auth-field-icon"><Mail size={18} /></span>
                     <span className="auth-field-copy"><small>EMAIL ADDRESS</small><input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" autoFocus required /></span>
                   </label>
                   {error && <p className="auth-error" role="alert">{error}</p>}
-                  <button className="auth-next" type="submit" disabled={busy} aria-label="继续">{busy ? <span className="auth-spinner" /> : <ArrowRight size={21} />}</button>
+                  <button className={`auth-next${busy ? ' is-busy' : ''}`} type="submit" disabled={busy} aria-label="继续" aria-busy={busy}>
+                    <motion.span className="auth-next-arrow" animate={{ opacity: busy ? 0 : 1, scale: busy ? 0.72 : 1 }} transition={buttonFeedbackSpring} aria-hidden="true"><ArrowRight size={21} /></motion.span>
+                    <motion.span className="auth-next-spinner-wrap" animate={{ opacity: busy ? 1 : 0, scale: busy ? 1 : 0.72 }} transition={buttonFeedbackSpring} aria-hidden="true"><span className="auth-spinner" /></motion.span>
+                  </button>
                 </form>}
 
                 {step === 'password' && <form onSubmit={event => authenticate(event, 'login')}>
@@ -198,7 +212,10 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
                     <button className="auth-reveal" type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? '隐藏密码' : '显示密码'}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button>
                   </label>
                   {error && <p className="auth-error" role="alert">{error}</p>}
-                  <button className="auth-next" type="submit" disabled={busy} aria-label="登录">{busy ? <span className="auth-spinner" /> : <ArrowRight size={21} />}</button>
+                  <button className={`auth-next${busy ? ' is-busy' : ''}`} type="submit" disabled={busy} aria-label="登录" aria-busy={busy}>
+                    <motion.span className="auth-next-arrow" animate={{ opacity: busy ? 0 : 1, scale: busy ? 0.72 : 1 }} transition={buttonFeedbackSpring} aria-hidden="true"><ArrowRight size={21} /></motion.span>
+                    <motion.span className="auth-next-spinner-wrap" animate={{ opacity: busy ? 1 : 0, scale: busy ? 1 : 0.72 }} transition={buttonFeedbackSpring} aria-hidden="true"><span className="auth-spinner" /></motion.span>
+                  </button>
                 </form>}
 
                 {step === 'create-password' && <form onSubmit={event => { event.preventDefault(); setError(''); if (password.length < 10 || password.length > 128) { setError('密码长度需要为 10–128 位。'); return } if (password !== confirmPassword) { setError('两次输入的密码不一致。'); return } moveTo('nickname') }}>
@@ -214,7 +231,10 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
                     <span className="auth-field-copy"><small>CONFIRM PASSWORD</small><input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} placeholder="再次输入密码" autoComplete="new-password" required /></span>
                   </label>
                   {error && <p className="auth-error" role="alert">{error}</p>}
-                  <button className="auth-next" type="submit" disabled={busy} aria-label="下一步">{busy ? <span className="auth-spinner" /> : <ArrowRight size={21} />}</button>
+                  <button className={`auth-next${busy ? ' is-busy' : ''}`} type="submit" disabled={busy} aria-label="下一步" aria-busy={busy}>
+                    <motion.span className="auth-next-arrow" animate={{ opacity: busy ? 0 : 1, scale: busy ? 0.72 : 1 }} transition={buttonFeedbackSpring} aria-hidden="true"><ArrowRight size={21} /></motion.span>
+                    <motion.span className="auth-next-spinner-wrap" animate={{ opacity: busy ? 1 : 0, scale: busy ? 1 : 0.72 }} transition={buttonFeedbackSpring} aria-hidden="true"><span className="auth-spinner" /></motion.span>
+                  </button>
                 </form>}
 
                 {step === 'nickname' && <form onSubmit={event => authenticate(event, 'register')}>
@@ -224,7 +244,10 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
                     <span className="auth-field-copy"><small>YOUR NAME</small><input type="text" value={nickname} onChange={event => setNickname(event.target.value)} placeholder="你的昵称" minLength={2} maxLength={32} autoComplete="nickname" autoFocus required /></span>
                   </label>
                   {error && <p className="auth-error" role="alert">{error}</p>}
-                  <button className="auth-next" type="submit" disabled={busy} aria-label="创建账号">{busy ? <span className="auth-spinner" /> : <ArrowRight size={21} />}</button>
+                  <button className={`auth-next${busy ? ' is-busy' : ''}`} type="submit" disabled={busy} aria-label="创建账号" aria-busy={busy}>
+                    <motion.span className="auth-next-arrow" animate={{ opacity: busy ? 0 : 1, scale: busy ? 0.72 : 1 }} transition={buttonFeedbackSpring} aria-hidden="true"><ArrowRight size={21} /></motion.span>
+                    <motion.span className="auth-next-spinner-wrap" animate={{ opacity: busy ? 1 : 0, scale: busy ? 1 : 0.72 }} transition={buttonFeedbackSpring} aria-hidden="true"><span className="auth-spinner" /></motion.span>
+                  </button>
                 </form>}
 
                 {step === 'success' && <div className="auth-success">
@@ -233,7 +256,6 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
                   <span>正在进入你的专属工作空间…</span>
                 </div>}
               </motion.div>
-            </AnimatePresence>
           </div>
           <div className="auth-main-foot"><ShieldCheck size={14} /> 安全连接 · 你的空间只属于你</div>
         </section>
