@@ -19,15 +19,11 @@ function keyFor(id: VoiceProviderId) { return id === 'openai' ? openAiKey : id =
 function labelFor(id: VoiceProviderId) { return ({ local: 'VoiceStudio 本地', openai: 'OpenAI TTS', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', fish: 'Fish Audio' } as Record<VoiceProviderId,string>)[id] }
 function jsonError(payload: any, fallback: string) { return String(payload?.error?.message || payload?.detail || payload?.message || payload?.error || fallback) }
 async function request(url: string, init: RequestInit = {}, timeoutMs = 30000) {
-  const controller = new AbortController()
   const externalSignal = init.signal
-  const abortFromCaller = () => controller.abort()
-  if (externalSignal?.aborted) controller.abort()
-  else externalSignal?.addEventListener('abort', abortFromCaller, { once:true })
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try { return await fetch(url, { ...init, signal: controller.signal }) }
-  catch (error) { if (externalSignal?.aborted) throw new Error('语音请求已被客户端中断'); if (controller.signal.aborted) throw new Error('语音服务请求超时'); throw error }
-  finally { clearTimeout(timer); externalSignal?.removeEventListener('abort', abortFromCaller) }
+  const timeoutSignal = AbortSignal.timeout(timeoutMs)
+  const signal = externalSignal ? AbortSignal.any([externalSignal, timeoutSignal]) : timeoutSignal
+  try { return await fetch(url, { ...init, signal }) }
+  catch (error) { if (externalSignal?.aborted) throw new Error('语音请求已被客户端中断'); if (timeoutSignal.aborted) throw new Error('语音服务请求超时'); throw error }
 }
 function missingKey(id: VoiceProviderId) { return new Error(labelFor(id) + '尚未配置服务端 API Key。请在部署平台设置对应环境变量。') }
 async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 30000) {
