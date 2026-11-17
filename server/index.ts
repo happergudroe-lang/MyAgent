@@ -87,7 +87,7 @@ const voiceAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || voiceStudioUrl).replace
 const voiceConfigPath = path.resolve(process.cwd(), 'data', 'voice-config.json')
 type VoiceConfig = { profileId: string; profileName: string; autoSpeak: boolean; continuous: boolean; asrModel: string }
 const defaultVoiceConfig: VoiceConfig = { profileId: 'f78cdbb5', profileName: '默认克隆音色', autoSpeak: true, continuous: false, asrModel: 'whisper-1' }
-function readVoiceConfig(): VoiceConfig { try { return { ...defaultVoiceConfig, ...JSON.parse(readFileSyncNode(voiceConfigPath, 'utf8')) } } catch { return { ...defaultVoiceConfig } } }
+function readVoiceConfig(): VoiceConfig { try { return { ...defaultVoiceConfig, ...JSON.parse(readFileSyncNode(voiceConfigPath, 'utf8')) } } catch { const initial = { ...defaultVoiceConfig }; try { writeVoiceConfig(initial) } catch {} return initial } }
 function writeVoiceConfig(value: VoiceConfig) { mkdirSync(path.dirname(voiceConfigPath), { recursive: true }); writeFileSync(voiceConfigPath, JSON.stringify(value, null, 2) + '\n', 'utf8') }
 async function voiceFetch(url: string, init: RequestInit = {}, timeout = 2500) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeout); try { return await fetch(url, { ...init, signal: controller.signal }) } catch (error) { if (controller.signal.aborted) throw new Error('VoiceStudio 请求超时（' + timeout + 'ms）'); throw error } finally { clearTimeout(timer) } }
 function voiceError(error: unknown) { return error instanceof Error ? error.message : 'VoiceStudio 请求失败' }
