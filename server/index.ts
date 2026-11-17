@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs'
 import { rateLimit } from 'express-rate-limit'
 import path from 'node:path'
 import { Pool } from 'pg'
+import { mountWecomGateway } from './wecom'
 
 const app = express()
 app.disable('x-powered-by')
@@ -18,6 +19,7 @@ const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required. Add the Supabase connection pooler URL in Vercel Environment Variables.')
 const db = new Pool({ connectionString: databaseUrl, max: Number(process.env.PG_POOL_MAX || 5), idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000, ...(process.env.NODE_ENV === 'production' ? { ssl: { rejectUnauthorized: false } } : {}) })
 const query = (text: string, values: unknown[] = []) => db.query(text, values)
+mountWecomGateway(app, db)
 async function ensureMemorySchema(){await query(`CREATE TABLE IF NOT EXISTS public.user_memories (user_id text primary key references public.users(id) on delete cascade,summary text not null default '',updated_at timestamptz not null default now())`)}
 async function ensureWorkspaceSchema(){await query(`CREATE TABLE IF NOT EXISTS public.workspaces (id text primary key,user_id text not null references public.users(id) on delete cascade,name text not null,description text not null default '',created_at timestamptz not null default now())`);await query(`ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS workspace_id text`);await query(`CREATE INDEX IF NOT EXISTS idx_conversations_workspace ON public.conversations(user_id,workspace_id,updated_at desc)`) }
 const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
