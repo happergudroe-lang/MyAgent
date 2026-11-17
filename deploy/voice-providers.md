@@ -6,6 +6,7 @@ The browser never connects directly to a developer's laptop. The authenticated M
 
 | `VOICE_PROVIDER` | TTS | ASR | Voice cloning | Required server environment |
 | --- | --- | --- | --- | --- |
+| `edge` | Microsoft Edge neural TTS | Browser Web Speech API (when supported) | No | No API key |
 | `local` | VoiceStudio | VoiceStudio | VoiceStudio profiles | `VOICE_STUDIO_URL`, optional `VOICE_STUDIO_ASR_URL` |
 | `openai` | OpenAI Speech API | OpenAI transcription | No | `OPENAI_API_KEY` |
 | `elevenlabs` | ElevenLabs | ElevenLabs Scribe | Instant Voice Clone | `ELEVENLABS_API_KEY` |
@@ -14,23 +15,29 @@ The browser never connects directly to a developer's laptop. The authenticated M
 
 Unsupported capabilities return explicit errors and are not silently routed to another provider.
 
-## Fastest public setup: Vercel + OpenAI
+## Zero-cost public setup: Vercel + Microsoft Edge neural TTS
 
-This path does not need a GPU, a home PC, a tunnel, or a separate voice server. Vercel calls the cloud Speech API directly.
+This is the default public speech path. It uses the unofficial Edge Read Aloud WebSocket protocol through the MIT-licensed `node-edge-tts` Node client. It needs **no OpenAI key, no paid speech API, no GPU, and no separate voice server**. The existing MYRQVIA chat provider remains responsible for LLM answers; this provider only synthesizes speech.
 
-1. Deploy the MyAgent repository to Vercel and configure the existing `DATABASE_URL` and chat-model environment variables as usual.
-2. In **Vercel → Project → Settings → Environment Variables**, set:
-   - `VOICE_PROVIDER=openai`
-   - `OPENAI_API_KEY` = a server-side OpenAI API key with Audio API access and billing enabled
-   - Optional `OPENAI_TTS_MODEL=gpt-4o-mini-tts`
-   - Optional `OPENAI_ASR_MODEL=gpt-transcribe`
-   - Optional `OPENAI_TTS_INSTRUCTIONS=Speak naturally and conversationally. Use clear, warm, expressive delivery.`
-3. Apply the variables to Production (and Preview if desired), then redeploy.
-4. Sign in to MyAgent, open Voice, and check that the status reports **OpenAI TTS** and lists the preset voices.
+1. Deploy MyAgent to Vercel. Keep the existing `DATABASE_URL` and your already-configured MYRQVIA/local/free chat environment intact.
+2. In **Vercel → Project → Settings → Environment Variables**, set `VOICE_PROVIDER=edge` for Production (and Preview if desired). Remove any old `VOICE_PROVIDER=local` or paid-provider override. No `OPENAI_API_KEY`, ElevenLabs, MiniMax, or Fish Audio key is required for this mode.
+3. Redeploy. The `/api/voice/status` route performs a real short Edge TTS synthesis probe (cached briefly per warm function instance); it reports unavailable if Microsoft rejects the WebSocket or returns no audio.
+4. Sign in, open Voice, and choose one of the Edge presets. TTS returns MP3 through `/api/voice/tts`. The UI labels Edge voices as presets and disables cloning.
+5. Microphone input uses the browser Web Speech API on supported browsers (typically current Chrome/Edge). This recognition is browser-managed and may use the browser vendor's online speech service; it is not an offline ASR engine and its availability/privacy behavior is controlled by the browser. If unsupported, the app explains why recording is unavailable. VoiceStudio local ASR remains available by selecting `VOICE_PROVIDER=local` on a host where it is reachable.
 
-The Speech API currently documents 13 built-in voices. They are presets, not user-created voice clones. The OpenAI provider deliberately reports `cloneSupported: false`; the clone endpoint returns HTTP 409 rather than pretending to clone. OpenAI requires a clear end-user disclosure that generated speech is AI-generated.
+### Edge voice catalog
 
-**Lifecycle warning:** OpenAI currently marks `gpt-4o-mini-tts` as deprecated with a scheduled shutdown of **2027-01-06**. This adapter uses the Speech API model named by `OPENAI_TTS_MODEL` and must be migrated to the supported Realtime speech workflow before that shutdown. Do not treat this model as a permanent integration.
+The initial allow-list includes `zh-CN-XiaoxiaoNeural`, `zh-CN-XiaoyiNeural`, `zh-CN-YunxiNeural`, `zh-CN-YunjianNeural`, `en-US-AriaNeural`, and `en-US-GuyNeural`. The CI smoke test actually requests two Chinese voices and one English voice, measures first-audio-chunk latency and full MP3 duration, and uploads the MP3s plus JSON report as a GitHub Actions artifact. Do not describe a voice as verified until that job passes.
+
+**Important limits:** these are Microsoft Edge Read Aloud neural presets, **not GPT voices and not cloned voices**. Clone is explicitly unsupported. This is a no-API-key/no-metered-speech-bill path, but do not promise literally unlimited use: Microsoft can throttle, change, or block this unofficial endpoint and provides no SLA or guaranteed quota. Voice availability, latency, and quality can change without notice. The browser ASR path may also send microphone audio to the browser's speech-recognition provider; disclose this to users.
+
+### Vercel Hobby feasibility and limits
+
+The app uses the Node.js runtime, where `node-edge-tts` opens an outbound WebSocket to Microsoft and collects the MP3 response. The existing Vercel function config sets `maxDuration: 60`; the request is one-shot MP3, not a persistent browser WebSocket session. Hobby limits, response/request body caps, deployment/build quotas, and Microsoft endpoint reachability still apply. If the Edge handshake or generation exceeds the function limit, the API returns an explicit error; it never falls back to a fake browser voice. Vercel Hobby's documented maximum duration depends on Fluid Compute being enabled; check the project's actual setting and logs. The current MP3 response is buffered before browser playback, so this is not GPT-style low-latency duplex audio.
+
+### No-cost fallback if Vercel cannot deploy or reach Microsoft
+
+Run the existing Node server on a computer that remains online, set `VOICE_PROVIDER=edge`, and expose the MyAgent server through the already-used HTTPS tunnel. No GPU is needed for Edge TTS. This avoids Vercel function restrictions but **depends on that host staying powered on, connected, and running the process**; concurrency is limited by the host's CPU/network and Microsoft's service throttling. It is not an always-on cloud service. For local cloning/ASR instead, switch to `VOICE_PROVIDER=local` and keep VoiceStudio running on the GPU host.
 
 ## Cloud cloning: ElevenLabs
 
