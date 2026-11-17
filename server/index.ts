@@ -25,6 +25,8 @@ const hashToken=(token:string)=>createHash('sha256').update(token).digest('hex')
 const COOKIE='myagent_session'
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'尝试次数过多，请 15 分钟后再试。'}})
 const chatLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'请求过于频繁，请 15 分钟后再试。'}})
+const voiceLimiter=rateLimit({windowMs:60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'语音请求过于频繁，请稍后再试。'}})
+const voiceCloneLimiter=rateLimit({windowMs:60*60*1000,limit:3,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'音色克隆次数已达上限，请一小时后再试。'}})
 const externalApiLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',legacyHeaders:false,message:{error:{message:'Rate limit exceeded.',type:'rate_limit_error'}}})
 function readCookie(req:express.Request,name:string){const raw=req.headers.cookie||'';for(const part of raw.split(';')){const [key,...value]=part.trim().split('=');if(key===name)return decodeURIComponent(value.join('='))}return ''}
 function setSessionCookie(res:express.Response,token:string){res.setHeader('Set-Cookie',COOKIE+'='+encodeURIComponent(token)+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800'+(process.env.NODE_ENV==='production'?'; Secure':''))}
@@ -103,13 +105,13 @@ app.get('/api/voice/status', requireAuth, async (_req, res) => {
 })
 app.get('/api/voice/config', requireAuth, (_req, res) => res.json({ config: readVoiceConfig() }))
 app.put('/api/voice/config', requireAuth, (req, res) => { const current = readVoiceConfig(), body = req.body || {}; const next: VoiceConfig = { profileId: typeof body.profileId === 'string' ? body.profileId.slice(0,128) : current.profileId, profileName: typeof body.profileName === 'string' ? body.profileName.slice(0,120) : current.profileName, autoSpeak: typeof body.autoSpeak === 'boolean' ? body.autoSpeak : current.autoSpeak, continuous: typeof body.continuous === 'boolean' ? body.continuous : current.continuous, asrModel: typeof body.asrModel === 'string' ? body.asrModel.slice(0,80) : current.asrModel }; writeVoiceConfig(next); res.json({ config: next }) })
-app.post('/api/voice/transcribe', requireAuth, upload.single('audio'), async (req: any, res) => {
+app.post('/api/voice/transcribe', requireAuth, voiceLimiter, upload.single('audio'), async (req: any, res) => {
  if (!req.file?.buffer?.length) return res.status(400).json({ error: '缺少录音文件 audio。' })
  const started = Date.now()
  try { const result = await transcribeVoice(req.file.buffer, req.file.mimetype || 'audio/webm', req.file.originalname || 'recording.webm'); res.json(result) }
  catch (error) { res.status(502).json({ error: voiceError(error), latencyMs: Date.now()-started }) }
 })
-app.post('/api/voice/tts', requireAuth, async (req, res) => {
+app.post('/api/voice/tts', requireAuth, voiceLimiter, async (req, res) => {
  const input = String(req.body?.text || '').trim()
  if (!input) return res.status(400).json({ error: '缺少待播报文本。' })
  if (input.length > 12000) return res.status(400).json({ error: '播报文本过长。' })
@@ -126,7 +128,7 @@ app.post('/api/voice/tts', requireAuth, async (req, res) => {
   catch(error) { console.error('[MyAgent] Voice TTS stream failed:',voiceError(error)); if(!res.headersSent)res.status(502).json({error:'TTS 音频流中断'});else res.end() }
  } catch(error) { if (res.destroyed) return; if(!res.headersSent)res.status(502).json({error:voiceError(error),latencyMs:Date.now()-started});else res.end() }
 })
-app.post('/api/voice/clone', requireAuth, upload.single('audio'), async (req: any, res) => {
+app.post('/api/voice/clone', requireAuth, voiceCloneLimiter, upload.single('audio'), async (req: any, res) => {
  const name = String(req.body?.name || '').trim().slice(0,80)
  if (!name || !req.file?.buffer?.length) return res.status(400).json({error:'请提供音色名称和参考录音。'})
  try {
