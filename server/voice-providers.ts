@@ -1,9 +1,11 @@
-type VoiceProviderId = 'local' | 'openai' | 'elevenlabs' | 'minimax' | 'fish'
+import { EdgeTTS } from 'node-edge-tts'
+
+type VoiceProviderId = 'edge' | 'local' | 'openai' | 'elevenlabs' | 'minimax' | 'fish'
 
 const openAiVoices = ['alloy','ash','ballad','coral','echo','fable','marin','cedar','nova','onyx','sage','shimmer','verse']
 const localTtsUrl = (process.env.VOICE_STUDIO_URL || 'http://127.0.0.1:3900').replace(/\/$/, '')
 const localAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || 'http://127.0.0.1:3901').replace(/\/$/, '')
-const provider = (process.env.VOICE_PROVIDER || 'local').toLowerCase() as VoiceProviderId
+const provider = (process.env.VOICE_PROVIDER || 'edge').toLowerCase() as VoiceProviderId
 const openAiKey = process.env.OPENAI_API_KEY || ''
 const elevenKey = process.env.ELEVENLABS_API_KEY || ''
 const minimaxKey = process.env.MINIMAX_API_KEY || ''
@@ -13,10 +15,10 @@ const localBasicAuth = process.env.VOICE_STUDIO_BASIC_AUTH || ''
 const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
-export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
+export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; browserAsrSupported?: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
 
 function keyFor(id: VoiceProviderId) { return id === 'openai' ? openAiKey : id === 'elevenlabs' ? elevenKey : id === 'minimax' ? minimaxKey : id === 'fish' ? fishKey : '' }
-function labelFor(id: VoiceProviderId) { return ({ local: 'VoiceStudio 本地', openai: 'OpenAI TTS', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', fish: 'Fish Audio' } as Record<VoiceProviderId,string>)[id] }
+function labelFor(id: VoiceProviderId) { return ({ edge: 'Microsoft Edge 神经语音（免费）', local: 'VoiceStudio 本地', openai: 'OpenAI TTS', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', fish: 'Fish Audio' } as Record<VoiceProviderId,string>)[id] }
 function jsonError(payload: any, fallback: string) { return String(payload?.error?.message || payload?.detail || payload?.message || payload?.error || fallback) }
 async function request(url: string, init: RequestInit = {}, timeoutMs = 30000) {
   const externalSignal = init.signal
@@ -34,7 +36,7 @@ async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 300
 
 export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   const started = Date.now()
-  if (!['local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
+  if (!['edge','local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
   if (provider === 'local') {
     try {
       const [health, list, asrHealth] = await Promise.all([localRequest(localTtsUrl + '/health', {}, 2500), localRequest(localTtsUrl + '/v1/audio/voices', {}, 2500), localRequest(localAsrUrl + '/health', {}, 2500).catch(() => null)])
@@ -178,5 +180,5 @@ export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filena
     if(!payload.voice_id)throw new Error('ElevenLabs 未返回 voice_id。')
     return {id:String(payload.voice_id),name}
   }
-  throw new Error(provider==='openai'?'OpenAI 标准 TTS 仅提供预设音色，不支持任意音色克隆。':labelFor(provider)+' 克隆适配器当前不可用。')
+  throw new Error(provider==='edge'?'Microsoft Edge 免费神经语音使用预设音色，不支持任意音色克隆。':provider==='openai'?'OpenAI 标准 TTS 仅提供预设音色，不支持任意音色克隆。':labelFor(provider)+' 克隆适配器当前不可用。')
 }
