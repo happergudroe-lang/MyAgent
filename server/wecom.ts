@@ -3,7 +3,7 @@ import type { Pool } from 'pg'
 import { createDecipheriv, createCipheriv, createHash, randomBytes } from 'node:crypto'
 
 type Queryable = Pick<Pool, 'query'>
-type WeComMessage = { toUser: string; fromUser: string; createTime: string; msgType: string; content: string; agentName: string; msgId: string }
+type WeComMessage = { toUser: string; fromUser: string; chatId: string; createTime: string; msgType: string; content: string; agentName: string; msgId: string }
 
 const env = () => ({
   corpId: process.env.WECOM_CORP_ID || '',
@@ -53,10 +53,9 @@ function verify(signature: string, timestamp: string, nonce: string, encrypted =
   const expected = sha1(token, timestamp, nonce, encrypted)
   if (!signature || expected !== signature) throw new Error('Invalid WeCom callback signature')
 }
-function unwrap(xml: string, timestamp: string, nonce: string) {
+function unwrap(xml: string, timestamp: string, nonce: string, signature: string) {
   const encrypted = xmlValue(xml, 'Encrypt')
-  if (!encrypted) return xml
-  const signature = xmlValue(xml, 'MsgSignature')
+  if (!encrypted) { verify(signature, timestamp, nonce); return xml }
   verify(signature, timestamp, nonce, encrypted)
   return decrypt(encrypted)
 }
@@ -74,7 +73,7 @@ function parseMessage(xml: string): WeComMessage | null {
   const command = content.match(/^\\s*\/agent\\s+([^\\s]+)\\s*([\\s\\S]*)$/i)
   if (!mention && !command) return null
   return {
-    toUser: xmlValue(xml, 'ToUserName'), fromUser: xmlValue(xml, 'FromUserName'),
+    toUser: xmlValue(xml, 'ToUserName'), fromUser: xmlValue(xml, 'FromUserName'), chatId: xmlValue(xml, 'ChatId') || xmlValue(xml, 'FromUserName'),
     createTime: xmlValue(xml, 'CreateTime'), msgType, content: (mention?.[2] ?? command?.[2] ?? '').trim(),
     agentName: mention?.[1] ?? command?.[1] ?? '', msgId: xmlValue(xml, 'MsgId')
   }
@@ -99,8 +98,8 @@ async function generate(provider: string, prompt: string) {
   if (!apiKey || !cfg.base) return '这个 Agent 的模型服务尚未配置。请管理员配置 ' + cfg.key + '。'
   const system = '你是 MyAgent 企业微信助手。用中文简洁回答，优先给出可执行结果。当前日期：' + new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }) + '。不要声称执行了未实际执行的操作。'
   const response = cfg.anthropic
-    ? await fetch(cfg.base + '/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: cfg.model, max_tokens: 1800, system, messages: [{ role: 'user', content: prompt }] }) })
-    : await fetch(cfg.base.replace(/\\/$/, '') + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey }, body: JSON.stringify({ model: cfg.model, temperature: 0.4, max_tokens: 1800, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }) })
+    ? await fetch(cfg.base + '/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: cfg.model, max_tokens: 1800, system, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(4200) })
+    : await fetch(cfg.base.replace(/\\/$/, '') + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey }, body: JSON.stringify({ model: cfg.model, temperature: 0.4, max_tokens: 1800, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }), signal: AbortSignal.timeout(4200) })
   if (!response.ok) throw new Error('Provider request failed: ' + response.status)
   const data: any = await response.json()
   const text = cfg.anthropic ? (data.content || []).filter((x: any) => x.type === 'text').map((x: any) => x.text).join('') : data.choices?.[0]?.message?.content
@@ -143,7 +142,7 @@ export function mountWecomGateway(app: express.Express, db: Queryable) {
       const { token, corpId } = env()
       if (!token || !corpId) return res.status(503).send('WeCom is not configured')
       const timestamp = String(req.query.timestamp || ''), nonce = String(req.query.nonce || '')
-      const xml = unwrap(String(req.body || ''), timestamp, nonce)
+      const xml = unwrap(String(req.body || ''), timestamp, nonce, String(req.query.msg_signature || req.query.signature || ''))
       const msg = parseMessage(xml)
       if (!msg) return res.status(200).send('success')
       await ensureSchema(db)
@@ -156,7 +155,7 @@ export function mountWecomGateway(app: express.Express, db: Queryable) {
       if (approval) {
         const status = approval[1] === '批准' ? 'approved' : 'rejected'
         const updated = await db.query(`UPDATE public.wecom_approvals SET status=$1,decided_at=now()
-          WHERE id=$2 AND chat_id=$3 AND user_id=$4 AND status='pending' RETURNING id`, [status, approval[2], msg.toUser, msg.fromUser])
+          WHERE id=$2 AND chat_id=$3 AND user_id=$4 AND status='pending' RETURNING id`, [status, approval[2], msg.chatId, msg.fromUser])
         const reply = updated.rowCount ? (status === 'approved' ? '已批准。该操作已进入执行队列；当前网关版本尚未开放外部副作用工具。' : '已拒绝，操作不会执行。') : '没有找到属于当前会话的待审批操作。'
         const body = textReply(msg.fromUser, msg.toUser, reply)
         return res.type('application/xml').send(wrapReply(body, timestamp, nonce))
@@ -166,15 +165,15 @@ export function mountWecomGateway(app: express.Express, db: Queryable) {
       const dangerous = /发(送)?(消息|文件)|删除|写入文件|执行命令|转账|付款|邀请成员/.test(command)
       if (dangerous) {
         const id = randomBytes(16).toString('hex').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5')
-        await db.query('INSERT INTO public.wecom_approvals(id,chat_id,user_id,action,payload) VALUES($1,$2,$3,$4,$5)', [id, msg.toUser, msg.fromUser, 'manual_review', JSON.stringify({ command, agent: msg.agentName })])
+        await db.query('INSERT INTO public.wecom_approvals(id,chat_id,user_id,action,payload) VALUES($1,$2,$3,$4,$5)', [id, msg.chatId, msg.fromUser, 'manual_review', JSON.stringify({ command, agent: msg.agentName })])
         const reply = '这项操作需要人工确认，尚未执行。审批编号：' + id + '\\n请回复：批准 ' + id + ' 或 拒绝 ' + id
         const body = textReply(msg.fromUser, msg.toUser, reply)
         return res.type('application/xml').send(wrapReply(body, timestamp, nonce))
       }
-      const existing = await db.query('SELECT session_id FROM public.wecom_sessions WHERE chat_id=$1 AND user_id=$2', [msg.toUser, msg.fromUser])
+      const existing = await db.query('SELECT session_id FROM public.wecom_sessions WHERE chat_id=$1 AND user_id=$2', [msg.chatId, msg.fromUser])
       const sessionId = existing.rows[0]?.session_id || randomBytes(16).toString('hex')
       await db.query(`INSERT INTO public.wecom_sessions(chat_id,user_id,session_id) VALUES($1,$2,$3)
-        ON CONFLICT(chat_id,user_id) DO UPDATE SET updated_at=now()`, [msg.toUser, msg.fromUser, sessionId])
+        ON CONFLICT(chat_id,user_id) DO UPDATE SET updated_at=now()`, [msg.chatId, msg.fromUser, sessionId])
       const prompt = command || '请介绍你能完成的工作。'
       let answer = ''
       let status = 'ok'
@@ -185,7 +184,7 @@ export function mountWecomGateway(app: express.Express, db: Queryable) {
       const duration = Date.now() - started
       await db.query(`INSERT INTO public.wecom_audit_logs(msg_id,chat_id,user_id,agent_name,provider,prompt,response,status,duration_ms)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(msg_id) DO NOTHING`,
-        [msg.msgId || null, msg.toUser, msg.fromUser, msg.agentName, provider, prompt.slice(0, 4000), answer.slice(0, 4000), status, duration])
+        [msg.msgId || null, msg.chatId, msg.fromUser, msg.agentName, provider, prompt.slice(0, 4000), answer.slice(0, 4000), status, duration])
       const body = textReply(msg.fromUser, msg.toUser, answer)
       res.type('application/xml').send(wrapReply(body, timestamp, nonce))
     } catch (error) {
