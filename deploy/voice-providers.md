@@ -52,7 +52,22 @@ The app uses the Node.js runtime, where `node-edge-tts` opens an outbound WebSoc
 
 ### No-cost fallback if Vercel cannot deploy or reach Microsoft
 
-Run the existing Node server on a computer that remains online, set `VOICE_PROVIDER=edge`, and expose the MyAgent server through the already-used HTTPS tunnel. No GPU is needed for Edge TTS. This avoids Vercel function restrictions but **depends on that host staying powered on, connected, and running the process**; concurrency is limited by the host's CPU/network and Microsoft's service throttling. It is not an always-on cloud service. For local cloning/ASR instead, switch to `VOICE_PROVIDER=local` and keep VoiceStudio running on the GPU host.
+Run the existing Node server on a computer that remains online, set `VOICE_PROVIDER=edge`, and expose the MyAgent server through an HTTPS tunnel. No GPU is needed for Edge TTS. On Windows PowerShell, from the repository directory:
+
+```powershell
+git pull origin main
+npm install
+# Keep your existing .env values for DATABASE_URL and MYRQVIA.
+# Add or change this line in .env:
+# VOICE_PROVIDER=edge
+npm run build
+$env:PORT = "3001"
+npm run server
+```
+
+The Express server serves the built frontend and authenticated `/api/*` routes on port 3001 when it is not running on Vercel. Expose **port 3001** through a public HTTPS tunnel. If using Tailscale Funnel, first inspect the existing Serve/Funnel configuration with `tailscale serve status` and `tailscale funnel status`; add a route for this app without replacing the existing MYRQVIA `/v1` route. After exposing it, open the new HTTPS hostname, sign in, and check `/api/voice/status` in the app.
+
+This avoids Vercel function restrictions but **depends on that host staying powered on, connected, and running the process**; concurrency is limited by the host's CPU/network and Microsoft's service throttling. It is not an always-on cloud service. For local cloning/ASR instead, switch to `VOICE_PROVIDER=local` and keep VoiceStudio running on the GPU host.
 
 ## Cloud cloning: ElevenLabs
 
