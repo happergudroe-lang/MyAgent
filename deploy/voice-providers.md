@@ -29,7 +29,7 @@ This is the default public speech path. It uses the unofficial Edge Read Aloud W
 
 ### Edge voice catalog
 
-The initial allow-list includes `zh-CN-XiaoxiaoNeural`, `zh-CN-XiaoyiNeural`, `zh-CN-YunxiNeural`, `zh-CN-YunjianNeural`, `en-US-AriaNeural`, and `en-US-GuyNeural`. The CI smoke test actually requests all six voices, measures first-audio-chunk latency and full MP3 duration, and uploads the MP3s plus JSON report as a GitHub Actions artifact.
+The initial allow-list includes `zh-CN-XiaoxiaoNeural`, `zh-CN-XiaoyiNeural`, `zh-CN-YunxiNeural`, `zh-CN-YunjianNeural`, `en-US-AriaNeural`, and `en-US-GuyNeural`. The CI gate normally requests two Chinese voices and one English voice to limit calls to Microsoft's rate-limited endpoint; set `EDGE_TTS_SMOKE_ALL=1` to exercise all six. It measures first-audio-chunk latency and full MP3 duration, retries HTTP 429 with backoff, and uploads MP3s plus a JSON report. One live CI run successfully verified all six voices, with the measurements below. Repeated rapid test runs can still receive HTTP 429.
 
 **Live CI verification (GitHub-hosted Ubuntu runner, 2026-11-17; three real MP3 syntheses):**
 
