@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="MyAgent — Your personal AI workspace">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A1226"/>
+      <stop offset="1" stop-color="#050914"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5694FF"/>
+      <stop offset="1" stop-color="#1B4AE2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1">
+      <stop offset="0" stop-color="#3B76FF" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#3B76FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="hl" cx="0.28" cy="0.12" r="1.05">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#94B4FF" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <ellipse cx="300" cy="300" rx="720" ry="520" fill="url(#glow)"/>
+
+  <!-- 右侧水印星形 -->
+  <g opacity="0.16" transform="translate(1032 315) scale(2.6)">
+    <path fill="#5B96FF" d="M0 -78 C9 -14 14 9 78 0 C14 9 9 14 0 78 C-9 14 -14 9 -78 0 C-14 -9 -9 -14 0 -78 Z"/>
+  </g>
+
+  <!-- 品牌图标 -->
+  <g transform="translate(96 168)">
+    <rect x="-10" y="-10" width="152" height="152" rx="40" fill="#3B76FF" opacity="0.22" filter="url(#soft)"/>
+    <rect width="132" height="132" rx="30" fill="url(#tile)"/>
+    <rect width="132" height="132" rx="30" fill="url(#hl)"/>
+    <g transform="translate(66 66)">
+      <path fill="#FFFFFF" d="M0 -46 C5 -10 8 5 46 0 C8 5 5 8 0 46 C-5 8 -8 5 -46 0 C-8 -5 -5 -10 0 -46 Z"/>
+      <circle cx="38" cy="38" r="9" fill="#FFFFFF" opacity="0.95"/>
+    </g>
+  </g>
+
+  <!-- 文字 -->
+  <text x="268" y="268" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="92" font-weight="700" fill="#FFFFFF" letter-spacing="-1">MyAgent</text>
+  <text x="272" y="326" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="34" fill="#9AA7BF">Your personal AI workspace</text>
+
+  <!-- 能力标签 -->
+  <g font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="24" font-weight="600">
+    <rect x="100" y="420" width="196" height="54" rx="27" fill="#FFFFFF" fill-opacity="0.06" stroke="#78A0FF" stroke-opacity="0.35"/>
+    <text x="126" y="456" fill="#C4D5F5">Canvas Preview</text>
+    <rect x="316" y="420" width="178" height="54" rx="27" fill="#FFFFFF" fill-opacity="0.06" stroke="#78A0FF" stroke-opacity="0.35"/>
+    <text x="342" y="456" fill="#C4D5F5">Multi-model</text>
+    <rect x="514" y="420" width="196" height="54" rx="27" fill="#FFFFFF" fill-opacity="0.06" stroke="#78A0FF" stroke-opacity="0.35"/>
+    <text x="540" y="456" fill="#C4D5F5">iOS-grade UI</text>
+  </g>
+
+  <!-- 底部说明 -->
+  <text x="100" y="562" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="26" fill="#7484A0">Personal AI workspace · Chat / Canvas / Multi-agent</text>
+</svg>

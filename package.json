@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "db:info": "echo 'Run supabase/schema.sql in the Supabase SQL Editor'",
-    "start": "tsx server/index.ts"
+    "start": "tsx server/index.ts",
+    "prebuild": "node scripts/gen-brand.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
