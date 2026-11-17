@@ -96,6 +96,11 @@ export async function synthesizeVoice(text: string, voiceId: string): Promise<Re
     if (typeof hex !== 'string' || !hex.length) throw new Error('MiniMax 未返回音频数据。')
     return new Response(Buffer.from(hex,'hex'), { status:200, headers:{'Content-Type':'audio/mpeg'} })
   }
+  if (provider === 'fish') {
+    if (!fishKey) throw missingKey(provider)
+    if (!voiceId) throw new Error('Fish Audio 需要先创建或选择一个 voice model。')
+    return request('https://api.fish.audio/v1/tts', { method:'POST', headers:{Authorization:'Bearer '+fishKey,'Content-Type':'application/json','model':process.env.FISH_AUDIO_MODEL||'s2.1-pro-free'}, body:JSON.stringify({text,reference_id:voiceId,format:'mp3',prosody:{speed:1,volume:0,normalize_loudness:true},normalize:true,latency:'balanced',condition_on_previous_chunks:true}) }, 180000)
+  }
   if (provider === 'elevenlabs') {
     if (!elevenKey) throw missingKey(provider)
     return request('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(voiceId), { method:'POST', headers:{'xi-api-key':elevenKey,'Content-Type':'application/json','Accept':'audio/mpeg'}, body:JSON.stringify({text,model_id:process.env.ELEVENLABS_MODEL_ID||'eleven_multilingual_v2',voice_settings:{stability:0.45,similarity_boost:0.8,style:0.25,use_speaker_boost:true}}) }, 180000)
@@ -136,7 +141,7 @@ export async function transcribeVoice(buffer: Buffer, mimeType: string, filename
 
 export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filename: string, name: string): Promise<{id:string;name:string}> {
   if(provider==='local') {
-    const makeForm=()=>{const form=new FormData();form.append('name',name);form.append('kind','clone');form.append('language','Auto');form.append('ref_audio',new Blob([buffer],{type:mimeType||'audio/webm'}),filename||'reference.webm');return form}
+    const makeForm=()=>{const form=new FormData();form.append('name',name);form.append('kind','clone');form.append('language','Auto');form.append('ref_audio',new Blob([new Uint8Array(buffer)],{type:mimeType||'audio/webm'}),filename||'reference.webm');return form}
     let response=await request(localTtsUrl+'/profiles',{method:'POST',body:makeForm()},180000)
     if(response.status===404)response=await request(localTtsUrl+'/api/profiles',{method:'POST',body:makeForm()},180000)
     const payload:any=await response.json().catch(()=>({}))
@@ -145,6 +150,18 @@ export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filena
     const id=String(p.id||p.profileId||'')
     if(!id)throw new Error('VoiceStudio 未返回新音色 ID。')
     return {id,name:String(p.name||name)}
+  }
+  if(provider==='fish') {
+    if(!fishKey)throw missingKey(provider)
+    const form=new FormData()
+    form.append('type','tts');form.append('title',name);form.append('train_mode','fast');form.append('visibility','private');form.append('description','User-provided voice sample; uploaded with speaker authorization.')
+    form.append('voices',new Blob([new Uint8Array(buffer)],{type:mimeType||'audio/wav'}),filename||'reference.wav')
+    const response=await request('https://api.fish.audio/model',{method:'POST',headers:{Authorization:'Bearer '+fishKey},body:form},180000)
+    const payload:any=await response.json().catch(()=>({}))
+    if(!response.ok)throw new Error(jsonError(payload,'Fish Audio 音色创建失败'))
+    const id=String(payload._id||'')
+    if(!id)throw new Error('Fish Audio 未返回模型 ID。')
+    return {id,name:String(payload.title||name)}
   }
   if(provider==='elevenlabs') {
     if(!elevenKey)throw missingKey(provider)
