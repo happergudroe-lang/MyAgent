@@ -40,7 +40,12 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   }
   if (provider === 'openai') {
     const voices = openAiVoices.map(id => ({ id, name:id[0].toUpperCase()+id.slice(1), type:'preset' as const, language:'多语言（英语音色优化）', provider }))
-    return { provider, providerLabel:labelFor(provider), available:Boolean(openAiKey), voices, cloneSupported:false, transcribeSupported:Boolean(openAiKey), ttsSupported:Boolean(openAiKey), error:openAiKey?undefined:'缺少 OPENAI_API_KEY。', latencyMs:Date.now()-started }
+    if (!openAiKey) return { provider, providerLabel:labelFor(provider), available:false, voices, cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:'缺少 OPENAI_API_KEY。', latencyMs:Date.now()-started }
+    try {
+      const ping = await request('https://api.openai.com/v1/models', { headers:{Authorization:'Bearer '+openAiKey} }, 8000)
+      if (!ping.ok) { const data:any=await ping.json().catch(()=>({})); throw new Error(jsonError(data,'OpenAI API 鉴权失败（HTTP '+ping.status+'）')) }
+      return { provider, providerLabel:labelFor(provider), available:true, voices, cloneSupported:false, transcribeSupported:true, ttsSupported:true, latencyMs:Date.now()-started }
+    } catch(error) { return { provider, providerLabel:labelFor(provider), available:false, voices, cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:error instanceof Error?error.message:'OpenAI API 不可用', latencyMs:Date.now()-started } }
   }
   if (!keyFor(provider)) return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:provider==='elevenlabs'?'缺少 ELEVENLABS_API_KEY。':provider==='minimax'?'缺少 MINIMAX_API_KEY。':'缺少 FISH_AUDIO_API_KEY。', latencyMs:Date.now()-started }
   if (provider === 'elevenlabs') {
