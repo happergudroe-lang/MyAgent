@@ -7,7 +7,7 @@ import { randomUUID, createHash } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from 'express-rate-limit'
 import path from 'node:path'
-import { readFileSync as readFileSyncNode } from 'node:fs'
+import { mkdirSync, readFileSync as readFileSyncNode, writeFileSync } from 'node:fs'
 import { Pool } from 'pg'
 
 const app = express()
@@ -81,6 +81,52 @@ app.post('/api/auth/logout',requireAuth,async(req:AuthRequest,res)=>{await query
 
 const port = Number(process.env.PORT || 3001)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
+
+const voiceStudioUrl = (process.env.VOICE_STUDIO_URL || 'http://127.0.0.1:3900').replace(/\/$/, '')
+const voiceAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || voiceStudioUrl).replace(/\/$/, '')
+const voiceConfigPath = path.resolve(process.cwd(), 'data', 'voice-config.json')
+type VoiceConfig = { profileId: string; profileName: string; autoSpeak: boolean; continuous: boolean; asrModel: string }
+const defaultVoiceConfig: VoiceConfig = { profileId: 'f78cdbb5', profileName: '默认克隆音色', autoSpeak: true, continuous: false, asrModel: 'whisper-1' }
+function readVoiceConfig(): VoiceConfig { try { return { ...defaultVoiceConfig, ...JSON.parse(readFileSyncNode(voiceConfigPath, 'utf8')) } } catch { const initial = { ...defaultVoiceConfig }; try { writeVoiceConfig(initial) } catch {} return initial } }
+function writeVoiceConfig(value: VoiceConfig) { mkdirSync(path.dirname(voiceConfigPath), { recursive: true }); writeFileSync(voiceConfigPath, JSON.stringify(value, null, 2) + '\n', 'utf8') }
+async function voiceFetch(url: string, init: RequestInit = {}, timeout = 2500) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeout); try { return await fetch(url, { ...init, signal: controller.signal }) } catch (error) { if (controller.signal.aborted) throw new Error('VoiceStudio 请求超时（' + timeout + 'ms）'); throw error } finally { clearTimeout(timer) } }
+function voiceError(error: unknown) { return error instanceof Error ? error.message : 'VoiceStudio 请求失败' }
+app.get('/api/voice/status', requireAuth, async (_req, res) => {
+ const started = Date.now(), config = readVoiceConfig()
+ try {
+  const [healthResponse, voicesResponse] = await Promise.all([voiceFetch(voiceStudioUrl + '/health', {}, 2500), voiceFetch(voiceStudioUrl + '/v1/audio/voices', {}, 2500)])
+  const health = await healthResponse.json().catch(() => ({ status: healthResponse.status }))
+  const payload: any = await voicesResponse.json().catch(() => ({}))
+  const raw = Array.isArray(payload) ? payload : (payload.voices || payload.data || [])
+  const voices = raw.map((v: any) => ({ id: String(v.id || v.voice_id || ''), name: String(v.name || v.id || '未命名音色'), type: String(v.type || (v.kind === 'profile' ? 'profile' : 'openai_alias')), language: String(v.language || 'unknown') })).filter((v: any) => v.id)
+  const selected = voices.find((v: any) => v.id === config.profileId)
+  if (!selected || selected.type !== 'profile') { const preferred = voices.find((v: any) => v.type === 'profile'); if (preferred) { config.profileId = preferred.id; config.profileName = preferred.name; writeVoiceConfig(config) } }
+  const available = healthResponse.ok && voicesResponse.ok
+  res.json({ available, baseUrl: voiceStudioUrl, asrUrl: voiceAsrUrl, voices, config, latencyMs: Date.now() - started, health, ...(available ? {} : { error: 'VoiceStudio health 或音色列表接口不可用' }), profileCount: voices.filter((v: any) => v.type === 'profile').length })
+ } catch (error) { res.json({ available: false, baseUrl: voiceStudioUrl, asrUrl: voiceAsrUrl, voices: [], config, latencyMs: Date.now() - started, health: null, error: voiceError(error), profileCount: 0 }) }
+})
+app.get('/api/voice/config', requireAuth, (_req, res) => res.json({ config: readVoiceConfig() }))
+app.put('/api/voice/config', requireAuth, (req, res) => { const current = readVoiceConfig(), body = req.body || {}; const next: VoiceConfig = { profileId: typeof body.profileId === 'string' ? body.profileId.slice(0,128) : current.profileId, profileName: typeof body.profileName === 'string' ? body.profileName.slice(0,120) : current.profileName, autoSpeak: typeof body.autoSpeak === 'boolean' ? body.autoSpeak : current.autoSpeak, continuous: typeof body.continuous === 'boolean' ? body.continuous : current.continuous, asrModel: typeof body.asrModel === 'string' ? body.asrModel.slice(0,80) : current.asrModel }; writeVoiceConfig(next); res.json({ config: next }) })
+app.post('/api/voice/transcribe', requireAuth, upload.single('audio'), async (req: any, res) => {
+ if (!req.file?.buffer?.length) return res.status(400).json({ error: '缺少录音文件 audio。' })
+ const started = Date.now(), form = new FormData()
+ form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' }), req.file.originalname || 'recording.webm'); form.append('model', 'whisper-1'); form.append('response_format', 'json')
+ const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 180000)
+ try { const response = await fetch(voiceAsrUrl + '/v1/audio/transcriptions', { method: 'POST', body: form, signal: controller.signal }); const payload: any = await response.json().catch(() => ({})); if (!response.ok) return res.status(response.status).json({ error: payload.error?.message || payload.error || '语音识别服务请求失败' }); res.json({ text: String(payload.text || '').trim(), latencyMs: Date.now() - started }) }
+ catch (error) { res.status(502).json({ error: controller.signal.aborted ? 'ASR 请求超时（180000ms）' : voiceError(error), latencyMs: Date.now() - started }) } finally { clearTimeout(timer) }
+})
+app.post('/api/voice/tts', requireAuth, async (req, res) => {
+ const input = String(req.body?.text || '').trim(); if (!input) return res.status(400).json({ error: '缺少待播报文本。' }); if (input.length > 12000) return res.status(400).json({ error: '播报文本过长。' })
+ const config = readVoiceConfig(), voice = String(req.body?.profileId || config.profileId), started = Date.now()
+ try { const upstream = await fetch(voiceStudioUrl + '/v1/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'tts-1', voice, input, response_format: 'mp3' }) }); if (!upstream.ok) { const detail = await upstream.text().catch(() => ''); return res.status(upstream.status).json({ error: detail.slice(0,1000) || 'VoiceStudio TTS 请求失败' }) }; res.status(200); res.setHeader('Content-Type','audio/mpeg'); res.setHeader('X-Voice-TTS-Latency-Ms',String(Date.now()-started)); res.setHeader('Cache-Control','no-store'); if (!upstream.body) return res.end(); const reader=upstream.body.getReader(); try { while(true){const {value,done}=await reader.read();if(done)break;if(!res.write(value))await new Promise<void>(resolve=>res.once('drain',resolve))}res.end() } catch(error){console.error('[MyAgent] Voice TTS stream failed:',voiceError(error));if(!res.headersSent)res.status(502).json({error:'TTS 音频流中断'});else res.end()} }
+ catch(error){if(!res.headersSent)res.status(502).json({error:voiceError(error)});else res.end()}
+})
+app.post('/api/voice/clone', requireAuth, upload.single('audio'), async (req: any, res) => {
+ const name=String(req.body?.name||'').trim().slice(0,80); if(!name||!req.file?.buffer?.length)return res.status(400).json({error:'请提供音色名称和参考录音。'})
+ const makeForm=()=>{const form=new FormData();form.append('name',name);form.append('kind','clone');form.append('language','Auto');form.append('ref_audio',new Blob([req.file.buffer],{type:req.file.mimetype||'audio/webm'}),req.file.originalname||'reference.webm');return form}
+ try{let response=await fetch(voiceStudioUrl+'/profiles',{method:'POST',body:makeForm()});if(response.status===404)response=await fetch(voiceStudioUrl+'/api/profiles',{method:'POST',body:makeForm()});const payload:any=await response.json().catch(()=>({}));if(!response.ok)return res.status(response.status).json({error:payload.error?.message||payload.error||'音色克隆失败'});const p=payload.profile||payload.data||payload,profile={id:String(p.id||p.profileId||''),name:String(p.name||name)};if(!profile.id)return res.status(502).json({error:'VoiceStudio 未返回新音色 ID。'});const config={...readVoiceConfig(),profileId:profile.id,profileName:profile.name};writeVoiceConfig(config);res.json({profile,config})}catch(error){res.status(502).json({error:voiceError(error)})}
+})
+
 type ProviderId = 'my' | 'openai' | 'deepseek' | 'claude' | 'gemini' | 'qwen' | 'custom'
 type ChatMessage = { role: string; content: any; tool_calls?: any[]; tool_call_id?: string; name?: string }
 const providers: Record<ProviderId, { label: string; envKey: string; baseUrl: string; protocol: 'openai' | 'anthropic'; models: string[] }> = {

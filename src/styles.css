@@ -391,7 +391,7 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 .app-shell[data-theme=dark] .search-wrap input{color:#eef4fc}
 .app-shell[data-theme=dark] .icon-btn{color:#b1bdcc}
 .app-shell[data-theme=dark] .icon-btn:hover{background:#293443;color:#fff}
-.messages>.message-row{content-visibility:auto;contain-intrinsic-size:auto 150px}
+
 
 
 .workbench-grid.is-maximized .work-pane{grid-column:1/-1;grid-row:1/-1}
@@ -466,3 +466,6 @@ body.myagent-resizing,body.myagent-resizing *{cursor:col-resize!important;user-s
 /* Keep the shared spinner reliable; the auth spinner uses its own isolated class. */
 .spin{animation:spin .9s linear infinite!important}
 @media(prefers-reduced-motion:reduce){.spin{animation:soft-pulse 1.2s ease-in-out infinite!important}}
+
+/* Mobile: prevent iOS focus zoom and keep chat rows in the single Virtuoso scroller. */
+@media(max-width:760px){input,textarea,select{font-size:16px!important}.messages>.message-row{content-visibility:visible!important;contain-intrinsic-size:none!important}}
