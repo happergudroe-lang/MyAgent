@@ -88,7 +88,7 @@ const voiceConfigPath = path.resolve(process.cwd(), 'data', 'voice-config.json')
 type VoiceConfig = { profileId: string; profileName: string; autoSpeak: boolean; continuous: boolean; asrModel: string }
 const defaultVoiceConfig: VoiceConfig = { profileId: 'marin', profileName: 'Marin', autoSpeak: true, continuous: false, asrModel: 'gpt-4o-mini-transcribe' }
 function readVoiceConfig(): VoiceConfig { try { return { ...defaultVoiceConfig, ...JSON.parse(readFileSyncNode(voiceConfigPath, 'utf8')) } } catch { const initial = { ...defaultVoiceConfig }; try { writeVoiceConfig(initial) } catch {} return initial } }
-function writeVoiceConfig(value: VoiceConfig) { mkdirSync(path.dirname(voiceConfigPath), { recursive: true }); writeFileSync(voiceConfigPath, JSON.stringify(value, null, 2) + '\\n', 'utf8') }
+function writeVoiceConfig(value: VoiceConfig) { mkdirSync(path.dirname(voiceConfigPath), { recursive: true }); writeFileSync(voiceConfigPath, JSON.stringify(value, null, 2) + '\n', 'utf8') }
 function voiceError(error: unknown) { return error instanceof Error ? error.message : '语音服务请求失败' }
 
 app.get('/api/voice/status', requireAuth, async (_req, res) => {
