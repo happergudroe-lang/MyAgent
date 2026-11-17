@@ -160,3 +160,22 @@ Do not add database credentials or model keys to variables prefixed with `VITE_`
 - Supabase Free projects can pause after inactivity and have plan-specific storage/compute limits. Export or back up important data regularly.
 - The Vercel Hobby plan is intended for personal, non-commercial use. Check current provider terms and quotas before public or commercial use.
 - Local development also requires `DATABASE_URL` in a local `.env` file. Start with `npm run dev`.
+
+## WeCom @Agent gateway (initial integration)
+
+The Express server exposes an encrypted callback at `/wecom/callback`. Configure a WeCom self-built application and set the server-only variables below. Do not commit real values.
+
+- `WECOM_CORP_ID`: enterprise CorpID
+- `WECOM_AGENT_ID`: application AgentId
+- `WECOM_SECRET`: application Secret (reserved for the outbound application-message API integration)
+- `WECOM_TOKEN`: callback Token
+- `WECOM_AES_KEY`: callback EncodingAESKey (43 characters, without the trailing equals sign)
+- `WECOM_DEFAULT_PROVIDER`: fallback provider, defaults to `my`
+
+Callback URL: `https://YOUR_PUBLIC_HOST/wecom/callback`.
+
+The initial gateway validates plaintext or AES-encrypted callbacks, parses text messages addressed as `@GPT ...`, `@Claude ...`, `@Gemini ...`, `@DeepSeek ...`, `@本机 ...` or `/agent GPT ...`, maps sender/group sessions in PostgreSQL, and records audit entries. The current first phase uses passive text replies. It does **not** yet implement WeCom outbound API push, file transfer, general tool execution, durable approval workers, or the Channels/Agent/Audit console UI; approval records are persisted but approval does not execute external side effects. Do not configure production workflows that depend on those unfinished capabilities.
+
+WeCom callback status: `GET /api/wecom/status`. It reports configuration presence and session-binding count only; it does not expose secrets. For a real group session, the callback payload's `ChatId` is used when present; otherwise the sender ID scopes the conversation.
+
+The callback should be reachable over public HTTPS. A local development server can be exposed with Tailscale Funnel, but the Funnel hostname must be configured as the callback URL and the process must remain running.
