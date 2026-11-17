@@ -13,6 +13,7 @@ const fishKey = process.env.FISH_AUDIO_API_KEY || ''
 const fishDefaultVoiceId = process.env.FISH_AUDIO_VOICE_ID || ''
 const localBasicAuth = process.env.VOICE_STUDIO_BASIC_AUTH || ''
 const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
+let edgeProbeCache: { checkedAt:number; status:VoiceStatus } | null = null
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
 export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; browserAsrSupported?: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
@@ -37,6 +38,31 @@ async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 300
 export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   const started = Date.now()
   if (!['edge','local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
+  if (provider === 'edge') {
+    if (edgeProbeCache && Date.now()-edgeProbeCache.checkedAt < 20000) return {...edgeProbeCache.status,latencyMs:Date.now()-started}
+    const voices:VoiceItem[] = [
+      {id:'zh-CN-XiaoxiaoNeural',name:'晓晓 · 女声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-XiaoyiNeural',name:'晓伊 · 女声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-YunxiNeural',name:'云希 · 男声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-YunjianNeural',name:'云健 · 男声',type:'preset',language:'中文（普通话）',provider},
+      {id:'en-US-AriaNeural',name:'Aria · Female',type:'preset',language:'English (US)',provider},
+      {id:'en-US-GuyNeural',name:'Guy · Male',type:'preset',language:'English (US)',provider}
+    ]
+    try {
+      const probe = new EdgeTTS({voice:'zh-CN-XiaoxiaoNeural',lang:'zh-CN',outputFormat:'audio-24khz-96kbitrate-mono-mp3',timeout:12000})
+      const iterator = probe.streamAudio('语音服务连接测试。')
+      const first = await iterator.next()
+      await iterator.return(undefined)
+      if (first.done || !Buffer.isBuffer(first.value) || !first.value.length) throw new Error('Edge TTS 已连接，但没有返回音频数据。')
+      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:true,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:true,latencyMs:Date.now()-started}
+      edgeProbeCache={checkedAt:Date.now(),status}
+      return status
+    } catch(error) {
+      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:false,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:false,error:error instanceof Error?error.message:'Microsoft Edge TTS 连接失败',latencyMs:Date.now()-started}
+      edgeProbeCache={checkedAt:Date.now(),status}
+      return status
+    }
+  }
   if (provider === 'local') {
     try {
       const [health, list, asrHealth] = await Promise.all([localRequest(localTtsUrl + '/health', {}, 2500), localRequest(localTtsUrl + '/v1/audio/voices', {}, 2500), localRequest(localAsrUrl + '/health', {}, 2500).catch(() => null)])
@@ -88,6 +114,25 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
 }
 
 export async function synthesizeVoice(text: string, voiceId: string, signal?: AbortSignal): Promise<Response> {
+  if (provider === 'edge') {
+    const allowed = ['zh-CN-XiaoxiaoNeural','zh-CN-XiaoyiNeural','zh-CN-YunxiNeural','zh-CN-YunjianNeural','en-US-AriaNeural','en-US-GuyNeural']
+    if (!allowed.includes(voiceId)) throw new Error('所选音色不在 Edge TTS 预设列表中。')
+    if (text.length > 5000) throw new Error('Edge TTS 单次播报最多 5000 个字符。')
+    const lang = voiceId.startsWith('en-') ? 'en-US' : 'zh-CN'
+    const tts = new EdgeTTS({voice:voiceId,lang,outputFormat:'audio-24khz-96kbitrate-mono-mp3',timeout:45000})
+    const chunks:Buffer[] = []
+    const iterator = tts.streamAudio(text)
+    try {
+      while (true) {
+        if (signal?.aborted) throw new Error('语音请求已被客户端中断')
+        const next = await iterator.next()
+        if (next.done) break
+        if (Buffer.isBuffer(next.value)) chunks.push(next.value)
+      }
+    } finally { await iterator.return(undefined).catch(()=>undefined) }
+    if (!chunks.length) throw new Error('Microsoft Edge TTS 未返回音频数据。')
+    return new Response(Buffer.concat(chunks),{status:200,headers:{'Content-Type':'audio/mpeg','Cache-Control':'no-store'}})
+  }
   if (provider === 'local') return localRequest(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}),signal }, 180000)
   if (provider === 'openai') {
     if (!openAiKey) throw missingKey(provider)
