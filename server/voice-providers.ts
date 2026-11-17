@@ -58,7 +58,7 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
       edgeProbeCache={checkedAt:Date.now(),status}
       return status
     } catch(error) {
-      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:false,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:false,error:error instanceof Error?error.message:'Microsoft Edge TTS 连接失败',latencyMs:Date.now()-started}
+      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:false,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:false,error:/429/.test(error instanceof Error?error.message:String(error))?'Microsoft Edge TTS 当前请求过于频繁（HTTP 429），请稍后重试。':(error instanceof Error?error.message:'Microsoft Edge TTS 连接失败'),latencyMs:Date.now()-started}
       edgeProbeCache={checkedAt:Date.now(),status}
       return status
     }
@@ -129,6 +129,10 @@ export async function synthesizeVoice(text: string, voiceId: string, signal?: Ab
         if (next.done) break
         if (Buffer.isBuffer(next.value)) chunks.push(next.value)
       }
+    } catch(error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      if (/429/.test(detail)) throw new Error('Microsoft Edge TTS 当前请求过于频繁（HTTP 429），请稍后重试。')
+      throw error
     } finally { await iterator.return(undefined).catch(()=>undefined) }
     if (!chunks.length) throw new Error('Microsoft Edge TTS 未返回音频数据。')
     return new Response(Buffer.concat(chunks),{status:200,headers:{'Content-Type':'audio/mpeg','Cache-Control':'no-store'}})
