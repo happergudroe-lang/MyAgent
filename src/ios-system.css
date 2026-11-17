@@ -1,0 +1,314 @@
+/* MyAgent iOS-inspired system layer — additive overrides; preserves existing component logic. */
+:root {
+  color-scheme: light;
+  --sys-blue: #0088ff;
+  --sys-green: #34c759;
+  --sys-orange: #ff9500;
+  --sys-red: #ff3b30;
+  --sys-purple: #af52de;
+  --bg-system: #ffffff;
+  --bg-secondary: #f2f2f7;
+  --bg-tertiary: #ffffff;
+  --label: #000000;
+  --label-secondary: rgba(60,60,67,.60);
+  --label-tertiary: rgba(60,60,67,.30);
+  --separator: rgba(60,60,67,.29);
+  --fill-quaternary: rgba(118,118,128,.10);
+  --material-thin: rgba(255,255,255,.72);
+  --material-regular: rgba(255,255,255,.86);
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-sheet: 22px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --spring-interactive: .28s cubic-bezier(.34,1.56,.64,1);
+  --spring-sheet: .42s cubic-bezier(.32,.72,0,1);
+  --spring-page: .36s cubic-bezier(.32,.72,0,1);
+  --ease-standard: .18s cubic-bezier(.25,.1,.25,1);
+  --scroll-settle: .36s cubic-bezier(.22,1,.36,1);
+}
+.app-shell {
+  --surface: var(--bg-system);
+  --muted: var(--bg-secondary);
+  --text: var(--label);
+  --subtle: var(--label-secondary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+  font-optical-sizing: auto;
+  background: var(--bg-system);
+  color: var(--label);
+}
+.app-shell[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-system: #000000;
+  --bg-secondary: #1c1c1e;
+  --bg-tertiary: #2c2c2e;
+  --label: #ffffff;
+  --label-secondary: rgba(235,235,245,.60);
+  --label-tertiary: rgba(235,235,245,.30);
+  --separator: rgba(84,84,88,.60);
+  --fill-quaternary: rgba(118,118,128,.24);
+  --material-thin: rgba(28,28,30,.72);
+  --material-regular: rgba(28,28,30,.90);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(.app-shell[data-theme="light"])) { color-scheme: dark; }
+}
+.app-shell button, .app-shell input, .app-shell textarea, .app-shell select {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-shell button {
+  transition: color var(--ease-standard), background-color var(--ease-standard), border-color var(--ease-standard), opacity var(--ease-standard), transform var(--spring-interactive), box-shadow var(--ease-standard);
+}
+.app-shell button:active:not(:disabled) { transform: scale(.975); opacity: .9; }
+.app-shell button:disabled { opacity: .35; cursor: not-allowed; }
+.app-shell :is(button,input,textarea,select,a,[tabindex]):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sys-blue) 22%, transparent);
+  outline-offset: 2px;
+}
+.app-shell :is(.sidebar,.main-area,.topbar,.chat-stage,.workbench,.modal-window) { color: var(--label); }
+.app-shell .topbar {
+  height: 52px;
+  flex-basis: 52px;
+  border-bottom: .5px solid var(--separator);
+  background: var(--material-regular);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.app-shell .topbar-title { font-size: 15px; color: var(--label-secondary); }
+.app-shell .topbar-title b { color: var(--label); font-weight: 650; letter-spacing: -.2px; }
+.app-shell .icon-btn, .app-shell .top-actions .icon-btn {
+  width: 44px; height: 44px; min-width: 44px; border-radius: 22px;
+  color: var(--label-secondary);
+}
+.app-shell .sidebar {
+  background: var(--bg-secondary);
+  border-color: var(--separator);
+  padding: 16px 12px max(12px, env(safe-area-inset-bottom));
+}
+.app-shell .brand-row { min-height: 44px; margin-bottom: 16px; color: var(--label); }
+.app-shell .brand-mark { border-radius: 12px; background: var(--sys-blue); }
+.app-shell .new-chat, .app-shell .quiet-button, .app-shell .primary-action {
+  min-height: 44px; border-radius: var(--radius-control);
+}
+.app-shell .new-chat { background: var(--bg-system); border-color: var(--separator); color: var(--label); }
+.app-shell .main-nav button, .app-shell .chat-link { min-height: 44px; border-radius: 11px; color: var(--label-secondary); }
+.app-shell .chat-list-item { border-radius: 12px; }
+.app-shell .chat-list-item.selected { background: color-mix(in srgb, var(--sys-blue) 10%, transparent); }
+.app-shell .search-wrap, .app-shell .market-search, .app-shell .skill-settings-search {
+  min-height: 44px; border-radius: 12px; background: var(--bg-system); border-color: var(--separator);
+}
+.app-shell .main-area, .app-shell .chat-stage { background: var(--bg-system); }
+.app-shell .home-copy h1 { font-size: clamp(30px, 4vw, 34px); line-height: 1.2; letter-spacing: -.8px; color: var(--label); }
+.app-shell .home-copy p { color: var(--label-secondary); line-height: 1.7; }
+.app-shell .starter-card {
+  border-radius: var(--radius-card); border-color: var(--separator); background: var(--bg-system);
+  padding: 16px; min-height: 120px;
+}
+.app-shell .starter-card:hover { border-color: color-mix(in srgb, var(--sys-blue) 35%, var(--separator)); background: var(--bg-secondary); }
+.app-shell .starter-icon { border-radius: 11px; }
+.app-shell .messages [data-testid="virtuoso-scroller"] {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  scrollbar-gutter: stable;
+}
+.app-shell .messages [data-testid="virtuoso-item-list"] { padding-inline: 2px; }
+.app-shell .markdown-body { color: var(--label); line-height: 1.75; font-size: 16px; }
+.app-shell .message-heading b { color: var(--label); }
+.app-shell .message-heading span, .app-shell .generation-time { color: var(--label-secondary); }
+.app-shell .composer-wrap { padding: 10px 0 max(13px, env(safe-area-inset-bottom)); }
+.app-shell .composer {
+  border: 1px solid var(--separator);
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.045);
+  transition: border-color var(--ease-standard), box-shadow var(--ease-standard), transform var(--ease-standard);
+}
+.app-shell .composer:focus-within {
+  border-color: color-mix(in srgb, var(--sys-blue) 70%, var(--separator));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sys-blue) 12%, transparent), 0 8px 28px rgba(0,0,0,.055);
+  transform: translateY(-1px);
+}
+.app-shell .composer textarea { min-height: 56px; max-height: 180px; color: var(--label); line-height: 1.65; resize: none; }
+.app-shell .composer-tools button { min-height: 40px; border-radius: 11px; color: var(--label-secondary); }
+.app-shell .composer-tools button.tool-active { background: color-mix(in srgb, var(--sys-blue) 12%, transparent); color: var(--sys-blue); border-color: transparent; }
+.app-shell .send-btn { width: 44px; height: 44px; flex-basis: 44px; background: var(--sys-blue); }
+.app-shell .send-btn:disabled { background: var(--fill-quaternary); color: var(--label-tertiary); opacity: 1; }
+.app-shell .jump-latest {
+  min-height: 44px; border-radius: 22px; border-color: var(--separator);
+  background: var(--material-regular); color: var(--sys-blue);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 4px 18px rgba(0,0,0,.10);
+  transition: transform var(--spring-sheet), opacity var(--ease-standard);
+}
+.app-shell .modal-backdrop {
+  background: rgba(0,0,0,.28);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.app-shell .modal-window {
+  border: 1px solid var(--separator);
+  border-radius: 20px;
+  background: var(--bg-system);
+  color: var(--label);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 12px 40px rgba(0,0,0,.18);
+}
+.app-shell .modal-header { border-color: var(--separator); }
+.app-shell .modal-header h2, .app-shell .modal-body h3 { color: var(--label); letter-spacing: -.3px; }
+.app-shell .modal-header p, .app-shell .modal-body p { color: var(--label-secondary); }
+.app-shell .workspace-item, .app-shell .provider-card, .app-shell .market-agent-card, .app-shell .skill-card {
+  border-radius: var(--radius-card); border-color: var(--separator); background: var(--bg-system); color: var(--label);
+}
+.app-shell .workspace-item.active, .app-shell .provider-card.active {
+  background: color-mix(in srgb, var(--sys-blue) 9%, var(--bg-system));
+  border-color: color-mix(in srgb, var(--sys-blue) 35%, var(--separator));
+}
+.app-shell .primary-action { background: var(--sys-blue); color: #fff; }
+.app-shell .primary-action:hover:not(:disabled) { background: color-mix(in srgb, var(--sys-blue) 88%, #000); }
+.app-shell .toggle { width: 51px; height: 31px; min-width: 51px; border-radius: 99px; background: #8e8e93; }
+.app-shell .toggle.on { background: var(--sys-green); }
+.app-shell .toggle i { width: 27px; height: 27px; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform var(--spring-interactive); }
+.app-shell .app-toast {
+  border: 1px solid var(--separator); border-radius: 14px;
+  background: var(--material-regular); color: var(--label);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 8px 32px rgba(0,0,0,.14);
+}
+.app-shell .thinking-dot { background: var(--sys-blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--sys-blue) 12%, transparent); }
+.app-shell .thinking-skeleton i { border-radius: 6px; }
+.app-shell .workbench-shell, .app-shell .workbench { background: var(--bg-secondary); border-color: var(--separator); }
+.app-shell .work-pane { border-radius: 14px; border-color: var(--separator); }
+.app-shell .workbench-toolbar { min-height: 52px; background: var(--material-regular); border-color: var(--separator); }
+.app-shell .workbench-actions button, .app-shell .workbench-layouts button, .app-shell .workbench-theme, .app-shell .workbench-close { width: 36px; height: 36px; border-radius: 10px; }
+.app-shell .message-actions button { width: 36px; height: 36px; border-radius: 10px; }
+.app-shell[data-theme="dark"] .sidebar,
+.app-shell[data-theme="dark"] .sidebar-rail,
+.app-shell[data-theme="dark"] .workbench-shell,
+.app-shell[data-theme="dark"] .workbench { background: var(--bg-secondary); color: var(--label); }
+.app-shell[data-theme="dark"] .new-chat,
+.app-shell[data-theme="dark"] .search-wrap,
+.app-shell[data-theme="dark"] .composer,
+.app-shell[data-theme="dark"] .starter-card,
+.app-shell[data-theme="dark"] .workspace-item,
+.app-shell[data-theme="dark"] .provider-card,
+.app-shell[data-theme="dark"] .market-agent-card,
+.app-shell[data-theme="dark"] .skill-card { background: var(--bg-tertiary); color: var(--label); border-color: var(--separator); }
+.app-shell[data-theme="dark"] .composer textarea,
+.app-shell[data-theme="dark"] .search-wrap input,
+.app-shell[data-theme="dark"] .market-search input { color: var(--label); }
+.app-shell[data-theme="dark"] .main-area,
+.app-shell[data-theme="dark"] .chat-stage,
+.app-shell[data-theme="dark"] .topbar { background: var(--bg-system); color: var(--label); border-color: var(--separator); }
+.app-shell[data-theme="dark"] .modal-window { background: var(--bg-secondary); color: var(--label); }
+.app-shell[data-theme="dark"] .modal-header { border-color: var(--separator); }
+.app-shell[data-theme="dark"] .topbar-title b,
+.app-shell[data-theme="dark"] .home-copy h1,
+.app-shell[data-theme="dark"] .message-heading b,
+.app-shell[data-theme="dark"] .markdown-body { color: var(--label); }
+.app-shell[data-theme="dark"] .markdown-body blockquote { background: var(--bg-tertiary); }
+.app-shell[data-theme="dark"] .jump-latest { background: var(--material-regular); color: var(--label); border-color: var(--separator); }
+.app-shell[data-theme="dark"] .primary-action { color: #fff; background: var(--sys-blue); }
+@media (max-width: 760px) {
+  .app-shell { min-height: 0; height: 100dvh; overflow: hidden; padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .app-shell .sidebar { display: flex !important; position: fixed; z-index: 110; inset: 0 auto 0 0; width: min(84vw, 320px); height: 100dvh; box-shadow: 18px 0 48px rgba(0,0,0,.18); }
+  .app-shell .sidebar-rail {
+    position: fixed; z-index: 120; left: 0; right: 0; bottom: 0;
+    width: 100%; height: calc(58px + env(safe-area-inset-bottom)); min-height: 58px;
+    padding: 5px 10px max(5px, env(safe-area-inset-bottom));
+    flex: none; display: flex !important; flex-direction: row; justify-content: space-around; align-items: center;
+    gap: 4px; border-right: 0; border-top: .5px solid var(--separator);
+    background: var(--material-regular);
+    -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+  }
+  .app-shell .sidebar-rail button {
+    width: 20%; min-width: 44px; height: 48px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; color: var(--label-secondary); font-size: 10px;
+  }
+  .app-shell .sidebar-rail button svg { width: 21px; height: 21px; }
+  .app-shell .sidebar-rail button::after { content: attr(title); font-size: 10px; line-height: 12px; white-space: nowrap; }
+  .app-shell .main-area { width: 100%; min-width: 0; }
+  .app-shell .topbar { height: 48px; flex-basis: 48px; padding: 0 12px; padding-left: 54px; }
+  .app-shell .topbar-title { font-size: 13px; gap: 6px; }
+  .app-shell .top-actions { gap: 0; }
+  .app-shell .top-actions .icon-btn { width: 40px; min-width: 40px; height: 44px; }
+  .app-shell .show-sidebar { position: fixed; z-index: 108; top: 3px; left: 8px; width: 42px; height: 42px; border: 0; background: transparent; }
+  .app-shell .chat-stage { padding: 0 16px; }
+  .app-shell .home-stage { padding: 24px 0 18px; }
+  .app-shell .home-copy { margin-bottom: 22px; }
+  .app-shell .home-copy h1 { font-size: 30px; }
+  .app-shell .starter-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .app-shell .starter-card { min-height: 112px; padding: 12px; grid-template-columns: 32px 1fr; column-gap: 9px; }
+  .app-shell .starter-icon { width: 32px; height: 32px; }
+  .app-shell .starter-card b { font-size: 13px; }
+  .app-shell .starter-card small { font-size: 11px; }
+  .app-shell .messages [data-testid="virtuoso-scroller"] { padding: 20px 0 18px; }
+  .app-shell .messages [data-testid="virtuoso-item-list"] { gap: 20px; }
+  .app-shell .message-row { gap: 10px; }
+  .app-shell .message-avatar { width: 32px; height: 32px; flex-basis: 32px; }
+  .app-shell .message-content { max-width: calc(100% - 42px); }
+  .app-shell .markdown-body { font-size: 15px; line-height: 1.75; }
+  .app-shell .composer-wrap { padding: 8px 0 max(10px, env(safe-area-inset-bottom)); }
+  .app-shell .composer { border-radius: 20px; padding: 10px 11px 8px; }
+  .app-shell .composer textarea { min-height: 50px; font-size: 16px; }
+  .app-shell .composer-tools { gap: 2px; }
+  .app-shell .composer-tools button { min-height: 40px; padding: 0 7px; font-size: 11px; }
+  .app-shell .composer-tools button svg { width: 14px; height: 14px; }
+  .app-shell .send-btn { width: 44px; height: 44px; flex-basis: 44px; }
+  .app-shell .composer-hint { font-size: 10px; }
+  .app-shell .workbench-shell { z-index: 105; width: 100% !important; max-width: none; min-width: 0; }
+  .app-shell .workbench-shell.drawer-open { inset: 0; height: 100dvh; }
+  .app-shell .workbench-toolbar { padding-top: env(safe-area-inset-top); min-height: calc(52px + env(safe-area-inset-top)); }
+  .app-shell .modal-backdrop { z-index: 140; display: flex; align-items: flex-end; padding: 0; }
+  .app-shell .modal-window, .app-shell .modal-window.wide {
+    width: 100%; max-width: none; max-height: 92dvh; min-height: min(48dvh, 420px);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    border-bottom: 0; padding-bottom: env(safe-area-inset-bottom);
+    animation: ios-sheet-in var(--spring-sheet) both;
+  }
+  .app-shell .modal-window::before { content: ""; display: block; width: 36px; height: 5px; flex: 0 0 5px; margin: 9px auto 2px; border-radius: 99px; background: var(--label-tertiary); }
+  .app-shell .modal-header { padding: 14px 18px 14px; }
+  .app-shell .modal-header h2 { font-size: 21px; }
+  .app-shell .modal-body { padding: 16px 16px 24px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .app-shell .agent-market-grid { grid-template-columns: 1fr 1fr; }
+  .app-shell .workbench-shell.is-closed { transform: translateX(105%); }
+}
+@media (max-width: 520px) {
+  .app-shell .topbar-title span:first-child, .app-shell .topbar-separator { display: none; }
+  .app-shell .topbar { padding-left: 50px; }
+  .app-shell .top-actions .icon-btn:nth-child(2) { display: none; }
+  .app-shell .starter-grid { grid-template-columns: 1fr 1fr; }
+  .app-shell .composer-tools button:nth-child(1) { display: none; }
+  .app-shell .composer-tools button { padding-inline: 6px; }
+  .app-shell .agent-select-wrap { min-height: 40px; }
+  .app-shell .agent-market-grid { grid-template-columns: 1fr; }
+  .app-shell .workspace-manager-layout, .app-shell .workspace-create-panel { grid-template-columns: 1fr; }
+  .app-shell .modal-header { gap: 10px; }
+  .app-shell .key-fields { grid-template-columns: 1fr; }
+}
+@keyframes ios-sheet-in {
+  from { opacity: 0; transform: translateY(28px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .app-shell button:active:not(:disabled) { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .topbar, .app-shell .sidebar-rail, .app-shell .modal-backdrop, .app-shell .jump-latest, .app-shell .app-toast, .app-shell .workbench-toolbar {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    background: var(--bg-system) !important;
+  }
+}
+@media (prefers-contrast: more) {
+  .app-shell { --separator: rgba(60,60,67,.55); --label-secondary: rgba(40,40,45,.88); }
+  .app-shell[data-theme="dark"] { --separator: rgba(235,235,245,.55); --label-secondary: rgba(235,235,245,.88); }
+  .app-shell :is(button,input,textarea,select) { border-color: currentColor; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .app-shell :is(button,a,[role="button"]) { min-height: 44px; }
+}
