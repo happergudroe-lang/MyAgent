@@ -72,7 +72,7 @@ app.get('/api/auth/me',requireAuth,(req:AuthRequest,res)=>res.json({user:req.use
 app.post('/api/auth/lookup',authLimiter,async(req,res)=>{
  try {
   const email=String(req.body?.email||'').trim().toLowerCase()
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254)return res.status(400).json({error:'请输入有效的邮箱地址。'})
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return res.status(400).json({error:'请输入有效的邮箱地址。'})
   const result=await query('SELECT username FROM users WHERE lower(email)=lower($1)',[email])
   res.json({exists:result.rows.length>0})
  } catch {res.status(503).json({error:'数据库暂时不可用，请稍后重试。'})}
