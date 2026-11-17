@@ -138,7 +138,7 @@ export default function App() {
  const [voiceSeconds,setVoiceSeconds]=useState(0)
  const [voiceStage,setVoiceStage]=useState<'idle'|'recording'|'transcribing'|'thinking'|'speaking'>('idle')
  const [voiceEngine,setVoiceEngine]=useState<any>(null)
- const [voiceConfig,setVoiceConfig]=useState<any>({profileId:'marin',profileName:'Marin',autoSpeak:true,continuous:false,asrModel:'gpt-4o-mini-transcribe'})
+ const [voiceConfig,setVoiceConfig]=useState<any>({profileId:'marin',profileName:'Marin',autoSpeak:true,continuous:false,asrModel:'gpt-transcribe'})
  const [voiceError,setVoiceError]=useState('')
  const [voiceAsrLatency,setVoiceAsrLatency]=useState<number|null>(null)
  const [voiceTtsLatency,setVoiceTtsLatency]=useState<number|null>(null)
