@@ -111,6 +111,20 @@ The URL must be reachable **from Vercel's server runtime**, not merely from your
 - **AI disclosure:** tell users that generated audio is AI-generated. A voice clone should not be represented as the real speaker speaking live.
 - **No-key/no-GPU reality:** without a cloud API key, OpenAI/ElevenLabs/MiniMax cloud modes cannot authenticate; without a reachable GPU host, local mode cannot synthesize or transcribe. The app reports unavailable and does not silently play browser speech as a fallback.
 
+### Indicative provider pricing (checked 2026-11-17)
+
+These are published list-price snapshots, not a bill estimate; region, plan, model, volume discounts, taxes, and future price changes may alter the total.
+
+| Provider / configured model | Published usage price | Notes |
+| --- | --- | --- |
+| OpenAI `gpt-4o-mini-tts` | $0.60 / 1M input text tokens + $12 / 1M output audio tokens | Token-based; exact cost depends on spoken length and audio tokenization. This model is deprecated and scheduled to shut down 2027-01-06. |
+| OpenAI `gpt-transcribe` | about $0.0045 / audio minute | ASR only; chat model charges are separate. |
+| ElevenLabs Multilingual v2 | about $0.10 / 1K characters | Voice cloning entitlement and monthly credit bundle depend on subscription tier. |
+| MiniMax `speech-2.8-turbo` | about $60 / 1M characters | Rapid voice cloning listed at about $1.50 per voice; not implemented in this adapter. |
+| Fish Audio | Account/model and model-tier dependent | Check the live API pricing and plan quota; the free developer model may have different latency and processing guarantees. |
+
+Official price references: [OpenAI audio model and pricing](https://developers.openai.com/api/docs/models/gpt-4o-mini-tts), [OpenAI API pricing](https://developers.openai.com/api/docs/pricing), [ElevenLabs API pricing](https://elevenlabs.io/pricing/api), [MiniMax token plan](https://platform.minimax.io/subscribe/token-plan?tab=api-enterprise), and [Fish Audio API docs](https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech).
+
 ## Environment variable reference
 
 ```dotenv
