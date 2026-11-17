@@ -39,7 +39,7 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   const started = Date.now()
   if (!['edge','local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
   if (provider === 'edge') {
-    if (edgeProbeCache && Date.now()-edgeProbeCache.checkedAt < 20000) return {...edgeProbeCache.status,latencyMs:Date.now()-started}
+    if (edgeProbeCache && Date.now()-edgeProbeCache.checkedAt < 20000) return {...edgeProbeCache.status}
     const voices:VoiceItem[] = [
       {id:'zh-CN-XiaoxiaoNeural',name:'晓晓 · 女声',type:'preset',language:'中文（普通话）',provider},
       {id:'zh-CN-XiaoyiNeural',name:'晓伊 · 女声',type:'preset',language:'中文（普通话）',provider},
