@@ -312,3 +312,233 @@
 @media (hover: none) and (pointer: coarse) {
   .app-shell :is(button,a,[role="button"]) { min-height: 44px; }
 }
+
+
+/* iOS 26 finishing layer: navigation, grouped settings, controls and feedback */
+.app-shell {
+  --ios-blue: #007aff;
+  --ios-grouped: #f2f2f7;
+  --ios-card: #fff;
+  --ios-hairline: rgba(60,60,67,.18);
+  --ios-spring: cubic-bezier(.2,.8,.2,1);
+}
+.app-shell[data-theme="dark"] {
+  --ios-grouped: #000;
+  --ios-card: #1c1c1e;
+  --ios-hairline: rgba(84,84,88,.62);
+}
+.app-shell .sidebar-rail button[aria-current="page"],
+.app-shell .sidebar-rail button.active,
+.app-shell .sidebar-rail button[aria-pressed="true"] {
+  color: var(--ios-blue);
+  background: color-mix(in srgb, var(--ios-blue) 12%, transparent);
+}
+.app-shell .sidebar-rail button[aria-current="page"] svg,
+.app-shell .sidebar-rail button.active svg { color: var(--ios-blue); }
+.app-shell .sidebar-rail button[aria-current="page"]::after,
+.app-shell .sidebar-rail button.active::after { color: var(--ios-blue); font-weight: 650; }
+.app-shell .sidebar { overscroll-behavior: contain; }
+.app-shell .sidebar :is(.workspace-tree button,.main-nav button,.chat-link,.sidebar-workspace-current) {
+  min-height: 44px;
+}
+.app-shell :is(.workspace-tree,.main-nav,.chat-list,.provider-list,.settings-section,.workspace-list) {
+  border-color: var(--ios-hairline);
+}
+.app-shell .workspace-tree button,
+.app-shell .main-nav button,
+.app-shell .provider-card,
+.app-shell .settings-tool,
+.app-shell .workspace-item,
+.app-shell .chat-list-item {
+  min-height: 44px;
+}
+.app-shell .settings-section,
+.app-shell .workspace-browser {
+  border-radius: 14px;
+}
+.app-shell .settings-tool,
+.app-shell .provider-card,
+.app-shell .workspace-item {
+  border-bottom: .5px solid var(--ios-hairline);
+}
+.app-shell .settings-tool:last-child,
+.app-shell .provider-card:last-child,
+.app-shell .workspace-item:last-child { border-bottom: 0; }
+.app-shell .settings-tool { padding-block: 8px; }
+.app-shell .provider-card { padding: 11px 12px; }
+.app-shell .provider-card::after,
+.app-shell .workspace-item-all::after {
+  content: "›";
+  margin-left: auto;
+  color: var(--label-tertiary);
+  font-size: 23px;
+  font-weight: 300;
+}
+.app-shell .provider-card.active::after { content: "✓"; color: var(--ios-blue); font-size: 16px; font-weight: 700; }
+.app-shell .toggle {
+  position: relative;
+  width: 51px; height: 31px; min-width: 51px;
+  border: 0; border-radius: 999px; padding: 2px;
+  background: #8e8e93;
+  box-shadow: inset 0 0 0 .5px rgba(0,0,0,.08);
+  transition: background-color .22s var(--ios-spring);
+}
+.app-shell .toggle.on { background: #34c759; }
+.app-shell .toggle i {
+  display: block; width: 27px; height: 27px;
+  background: #fff; border-radius: 50%;
+  transform: translateX(0);
+  transition: transform .28s var(--spring-interactive);
+}
+.app-shell .toggle.on i { transform: translateX(20px); }
+.app-shell :is(.market-categories button,.composer-tools button.tool-active) { color: var(--ios-blue); }
+.app-shell .market-categories button.active {
+  background: var(--ios-blue); color: white; border-color: var(--ios-blue);
+}
+.app-shell .app-toast {
+  position: fixed; z-index: 300; left: 50%;
+  bottom: max(76px, calc(68px + env(safe-area-inset-bottom)));
+  transform: translateX(-50%);
+  max-width: min(90vw, 520px); padding: 12px 16px;
+  border-radius: 14px; text-align: center;
+  animation: ios-toast-in .32s var(--spring-sheet) both;
+}
+.app-shell :is(.workspace-empty,.history-empty,.empty-result,.workspace-empty,.about-body) {
+  color: var(--label-secondary);
+}
+.app-shell :is(.workspace-empty,.empty-result) { padding: 28px 18px; text-align: center; }
+.app-shell .thinking-skeleton i {
+  overflow: hidden; background: linear-gradient(90deg,var(--fill-quaternary) 20%,color-mix(in srgb,var(--label-tertiary) 32%,transparent) 48%,var(--fill-quaternary) 76%);
+  background-size: 220% 100%; animation: ios-shimmer 1.35s ease-in-out infinite;
+}
+.app-shell .modal-backdrop { overscroll-behavior: contain; }
+.app-shell .modal-window { transform-origin: center bottom; }
+.app-shell .modal-window::before { content: none; }
+@keyframes ios-toast-in {
+  from { opacity: 0; transform: translate(-50%,12px) scale(.97); }
+  to { opacity: 1; transform: translate(-50%,0) scale(1); }
+}
+@keyframes ios-shimmer { to { background-position-x: -220%; } }
+
+/* SuperAgent — strictly scoped so its visual system cannot leak into MyAgent */
+.sa-app {
+  --sa-blue: #007aff; --sa-bg: #f2f2f7; --sa-surface: #fff;
+  --sa-text: #1c1c1e; --sa-muted: #8e8e93; --sa-line: rgba(60,60,67,.18);
+  --sa-glass: rgba(255,255,255,.78);
+  color: var(--sa-text); background: var(--sa-bg);
+  font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;
+  isolation: isolate; min-width: 0;
+}
+.sa-app :is(button,input,textarea,select) { font: inherit; -webkit-tap-highlight-color: transparent; }
+.sa-app button { transition: background-color .2s var(--ios-spring),color .2s var(--ios-spring),border-color .2s var(--ios-spring),transform .28s var(--spring-interactive),opacity .2s ease; }
+.sa-app button:active:not(:disabled) { transform: scale(.975); }
+.sa-app :is(button,input,textarea,[tabindex]):focus-visible { outline: 3px solid color-mix(in srgb,var(--sa-blue) 28%,transparent); outline-offset: 2px; }
+.sa-app .sa-rail {
+  background: var(--sa-glass); border-right: .5px solid var(--sa-line);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+}
+.sa-app .sa-list { background: var(--sa-bg); border-right: .5px solid var(--sa-line); }
+.sa-app .sa-list :is(button,[role="button"]) { min-height: 44px; border-radius: 11px; }
+.sa-app .sa-list :is(button.active,[aria-current="page"]) { background: color-mix(in srgb,var(--sa-blue) 11%,transparent); color: var(--sa-blue); }
+.sa-app .sa-chat { background: var(--sa-surface); color: var(--sa-text); min-width: 0; }
+.sa-app .sa-chat-head {
+  min-height: 52px; background: var(--sa-glass);
+  border-bottom: .5px solid var(--sa-line);
+  -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+}
+.sa-app .sa-messages { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.sa-app .sa-bubble { border-radius: 18px; line-height: 1.65; overflow-wrap: anywhere; }
+.sa-app .sa-bubble.user {
+  background: var(--sa-blue); color: #fff;
+  border-radius: 18px 18px 5px 18px;
+}
+.sa-app .sa-bubble.agent {
+  background: var(--sa-bg); color: var(--sa-text);
+  border: .5px solid var(--sa-line); border-radius: 18px 18px 18px 5px;
+}
+.sa-app .sa-composer {
+  background: var(--sa-surface); border: 1px solid var(--sa-line);
+  border-radius: 22px; box-shadow: 0 5px 24px rgba(0,0,0,.07);
+  transition: border-color .2s ease,box-shadow .2s ease;
+}
+.sa-app .sa-composer:focus-within { border-color: color-mix(in srgb,var(--sa-blue) 65%,var(--sa-line)); box-shadow: 0 0 0 3px color-mix(in srgb,var(--sa-blue) 12%,transparent),0 5px 24px rgba(0,0,0,.07); }
+.sa-app .sa-composer textarea { min-height: 44px; max-height: 180px; resize: none; color: var(--sa-text); font-size: 16px; }
+.sa-app .sa-mention { color: var(--sa-blue); background: color-mix(in srgb,var(--sa-blue) 10%,transparent); border-radius: 7px; padding: 2px 5px; }
+.sa-app .sa-modal {
+  background: var(--sa-surface); color: var(--sa-text);
+  border: .5px solid var(--sa-line); border-radius: 20px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.2);
+}
+.sa-app .sa-token-panel { background: var(--sa-bg); border: .5px solid var(--sa-line); border-radius: 14px; }
+.sa-app .sa-switch {
+  width: 51px; height: 31px; min-width: 51px; border-radius: 99px;
+  background: #8e8e93; padding: 2px; transition: background .22s ease;
+}
+.sa-app .sa-switch[aria-checked="true"], .sa-app .sa-switch.on { background: #34c759; }
+.sa-app .sa-switch::after {
+  content: ""; display: block; width: 27px; height: 27px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px #0003; transition: transform .28s var(--spring-interactive);
+}
+.sa-app .sa-switch[aria-checked="true"]::after, .sa-app .sa-switch.on::after { transform: translateX(20px); }
+.sa-app .sa-badge-btn { min-width: 32px; min-height: 32px; border-radius: 10px; color: var(--sa-muted); }
+.sa-app .sa-badge-btn:hover { color: var(--sa-blue); background: color-mix(in srgb,var(--sa-blue) 10%,transparent); }
+.sa-app[data-theme="dark"], .sa-app [data-theme="dark"] {
+  --sa-bg: #1c1c1e; --sa-surface: #2c2c2e; --sa-text: #f5f5f7;
+  --sa-muted: #98989d; --sa-line: rgba(235,235,245,.16);
+  --sa-glass: rgba(28,28,30,.82); color: var(--sa-text);
+}
+.sa-app[data-theme="dark"] .sa-bubble.agent,
+.sa-app[data-theme="dark"] .sa-token-panel { background: #242426; color: var(--sa-text); }
+.sa-app[data-theme="dark"] .sa-chat { background: #1c1c1e; color: var(--sa-text); }
+@media (max-width: 760px) {
+  .app-shell .sidebar { z-index: 150; width: min(86vw,340px)!important; max-width: 340px; padding-top: max(12px,env(safe-area-inset-top)); border-radius: 0 20px 20px 0; }
+  .app-shell .sidebar:not(:has(+ .sidebar-rail.rail-hidden)) { box-shadow: 20px 0 60px rgba(0,0,0,.24); }
+  .app-shell .sidebar-rail { z-index: 130; }
+  .app-shell .sidebar-rail button { flex: 1 1 0; width: auto; max-width: 76px; }
+  .app-shell .sidebar-rail button:first-child { display: none; }
+  .app-shell .sidebar-rail button:nth-child(2)::after { content: "新对话"; }
+  .app-shell .sidebar-rail button:nth-child(3)::after { content: "Agents"; }
+  .app-shell .sidebar-rail button:nth-child(4)::after { content: "自动化"; }
+  .app-shell .sidebar-rail button:nth-child(5)::after { content: "更多"; }
+  .app-shell .modal-backdrop { align-items: flex-end; background: rgba(0,0,0,.32); }
+  .app-shell .modal-window,.app-shell .modal-window.wide {
+    position: relative; display: flex; flex-direction: column; width: 100%; max-height: min(92dvh,900px);
+    min-height: min(42dvh,360px); overflow: hidden auto;
+    border-radius: 24px 24px 0 0; padding-bottom: max(12px,env(safe-area-inset-bottom));
+    animation: ios-sheet-in var(--spring-sheet) both;
+  }
+  .app-shell .modal-window::before {
+    content: ""; display: block; position: sticky; top: 0; z-index: 2;
+    width: 36px; height: 5px; min-height: 5px; flex: 0 0 5px;
+    margin: 9px auto 2px; border-radius: 99px; background: var(--label-tertiary);
+  }
+  .app-shell .modal-header { position: sticky; top: 0; z-index: 1; background: var(--bg-system); }
+  .app-shell .modal-body { min-height: 0; overflow: visible; }
+  .sa-app { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
+  .sa-app .sa-rail {
+    position: fixed; z-index: 50; inset: auto 0 0; height: calc(58px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: row; justify-content: space-around; align-items: center;
+    padding: 4px 10px max(4px,env(safe-area-inset-bottom));
+    border: 0; border-top: .5px solid var(--sa-line);
+  }
+  .sa-app .sa-list {
+    position: fixed; z-index: 60; inset: 0 auto 0 0; width: min(86vw,340px);
+    padding-top: env(safe-area-inset-top); box-shadow: 18px 0 52px rgba(0,0,0,.2);
+  }
+  .sa-app .sa-chat { height: 100%; padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .sa-app .sa-chat-head { min-height: calc(48px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+  .sa-app .sa-composer { border-radius: 20px; }
+  .sa-app .sa-modal { position: fixed; inset: auto 0 0; width: 100%; max-height: 92dvh; overflow: auto; border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .sa-app .sa-modal::before { content: ""; display: block; width: 36px; height: 5px; margin: 10px auto 5px; border-radius: 99px; background: var(--sa-muted); opacity: .5; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .app-shell *::before, .app-shell *::after,
+  .sa-app *, .sa-app *::before, .sa-app *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+  .sa-app button:active { transform: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sa-app .sa-rail,.sa-app .sa-chat-head { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--sa-surface); }
+}
