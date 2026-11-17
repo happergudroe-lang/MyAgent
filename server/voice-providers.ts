@@ -9,6 +9,7 @@ const elevenKey = process.env.ELEVENLABS_API_KEY || ''
 const minimaxKey = process.env.MINIMAX_API_KEY || ''
 const fishKey = process.env.FISH_AUDIO_API_KEY || ''
 const fishDefaultVoiceId = process.env.FISH_AUDIO_VOICE_ID || ''
+const localBasicAuth = process.env.VOICE_STUDIO_BASIC_AUTH || ''
 const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
@@ -25,20 +26,25 @@ async function request(url: string, init: RequestInit = {}, timeoutMs = 30000) {
   finally { clearTimeout(timer) }
 }
 function missingKey(id: VoiceProviderId) { return new Error(labelFor(id) + '尚未配置服务端 API Key。请在部署平台设置对应环境变量。') }
+async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 30000) {
+  const headers = new Headers(init.headers || {})
+  if (localBasicAuth) headers.set('Authorization', 'Basic ' + Buffer.from(localBasicAuth).toString('base64'))
+  return request(url, { ...init, headers }, timeoutMs)
+}
 
 export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   const started = Date.now()
   if (!['local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
   if (provider === 'local') {
     try {
-      const [health, list, asrHealth] = await Promise.all([request(localTtsUrl + '/health', {}, 2500), request(localTtsUrl + '/v1/audio/voices', {}, 2500), request(localAsrUrl + '/health', {}, 2500).catch(() => null)])
+      const [health, list, asrHealth] = await Promise.all([localRequest(localTtsUrl + '/health', {}, 2500), localRequest(localTtsUrl + '/v1/audio/voices', {}, 2500), localRequest(localAsrUrl + '/health', {}, 2500).catch(() => null)])
       const hp = await health.json().catch(() => ({}))
       const payload: any = await list.json().catch(() => ({}))
       const raw = Array.isArray(payload) ? payload : (payload.voices || payload.data || [])
       const voices = raw.map((v:any) => ({ id:String(v.id || v.voice_id || ''), name:String(v.name || v.id || '未命名音色'), type:(v.type === 'profile' || v.kind === 'profile' ? 'profile' : 'preset') as 'profile'|'preset', language:String(v.language || 'unknown'), provider:'local' })).filter((v:VoiceItem) => v.id)
       const ok = health.ok && list.ok
       return { provider, providerLabel:labelFor(provider), available:ok, voices, cloneSupported:ok, transcribeSupported:Boolean(asrHealth?.ok), ttsSupported:ok, error:ok ? (asrHealth?.ok ? undefined : 'VoiceStudio TTS 已连接，但 ASR 服务未连接。') : 'VoiceStudio health 或音色列表接口不可用。', latencyMs:Date.now()-started, baseUrl:localTtsUrl }
-    } catch (error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:true, transcribeSupported:true, ttsSupported:true, error:error instanceof Error?error.message:'VoiceStudio 连接失败', latencyMs:Date.now()-started, baseUrl:localTtsUrl } }
+    } catch (error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:error instanceof Error?error.message:'VoiceStudio 连接失败', latencyMs:Date.now()-started, baseUrl:localTtsUrl } }
   }
   if (provider === 'openai') {
     const voices = openAiVoices.map(id => ({ id, name:id[0].toUpperCase()+id.slice(1), type:'preset' as const, language:'多语言（英语音色优化）', provider }))
@@ -80,7 +86,7 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
 }
 
 export async function synthesizeVoice(text: string, voiceId: string): Promise<Response> {
-  if (provider === 'local') return request(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}) }, 180000)
+  if (provider === 'local') return localRequest(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}) }, 180000)
   if (provider === 'openai') {
     if (!openAiKey) throw missingKey(provider)
     if (!openAiVoices.includes(voiceId)) throw new Error('所选音色不属于 OpenAI 预设音色。')
@@ -114,7 +120,7 @@ export async function transcribeVoice(buffer: Buffer, mimeType: string, filename
   form.append('file', new Blob([new Uint8Array(buffer)], {type:mimeType||'audio/webm'}), filename||'recording.webm')
   if (provider === 'local') {
     form.append('model','whisper-1'); form.append('response_format','json')
-    const response = await request(localAsrUrl+'/v1/audio/transcriptions',{method:'POST',body:form},180000)
+    const response = await localRequest(localAsrUrl+'/v1/audio/transcriptions',{method:'POST',body:form},180000)
     const payload:any = await response.json().catch(()=>({}))
     if(!response.ok) throw new Error(jsonError(payload,'VoiceStudio ASR 请求失败'))
     return {text:String(payload.text||'').trim(),latencyMs:Date.now()-started}
@@ -142,8 +148,8 @@ export async function transcribeVoice(buffer: Buffer, mimeType: string, filename
 export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filename: string, name: string): Promise<{id:string;name:string}> {
   if(provider==='local') {
     const makeForm=()=>{const form=new FormData();form.append('name',name);form.append('kind','clone');form.append('language','Auto');form.append('ref_audio',new Blob([new Uint8Array(buffer)],{type:mimeType||'audio/webm'}),filename||'reference.webm');return form}
-    let response=await request(localTtsUrl+'/profiles',{method:'POST',body:makeForm()},180000)
-    if(response.status===404)response=await request(localTtsUrl+'/api/profiles',{method:'POST',body:makeForm()},180000)
+    let response=await localRequest(localTtsUrl+'/profiles',{method:'POST',body:makeForm()},180000)
+    if(response.status===404)response=await localRequest(localTtsUrl+'/api/profiles',{method:'POST',body:makeForm()},180000)
     const payload:any=await response.json().catch(()=>({}))
     if(!response.ok)throw new Error(jsonError(payload,'VoiceStudio 音色克隆失败'))
     const p=payload.profile||payload.data||payload
