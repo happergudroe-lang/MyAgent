@@ -542,3 +542,24 @@
 @media (prefers-reduced-transparency: reduce) {
   .sa-app .sa-rail,.sa-app .sa-chat-head { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--sa-surface); }
 }
+
+@media (max-width: 760px) {
+  .app-shell .sidebar-scrim {
+    position: fixed; z-index: 145; inset: 0; display: block;
+    width: 100%; height: 100%; border: 0; border-radius: 0;
+    background: rgba(0,0,0,.28);
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    animation: ios-scrim-in .2s ease-out both;
+  }
+  .app-shell .sidebar { z-index: 150; }
+  .app-shell .sidebar .chat-list-item { position: relative; }
+  .app-shell .sidebar .chat-list-item::after {
+    content: ""; position: absolute; left: 42px; right: 0; bottom: 0;
+    height: .5px; background: var(--separator); pointer-events: none;
+  }
+  .app-shell .sidebar .chat-list-item:last-child::after { display: none; }
+  .app-shell .sidebar .workspace-tree button,
+  .app-shell .sidebar .main-nav button { border-radius: 10px; }
+}
+@keyframes ios-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.app-shell[data-theme="dark"] .sidebar-scrim { background: rgba(0,0,0,.52); }
