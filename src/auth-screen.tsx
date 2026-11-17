@@ -20,9 +20,9 @@ const progressFor: Record<Step, number> = {
 }
 const spring = { type: 'spring' as const, stiffness: 340, damping: 17, mass: 0.85 }
 const stepVariants = {
-  enter: { opacity: 0, x: 46, scale: 0.97, rotate: 0.6 },
+  enter: (direction: number) => ({ opacity: 0, x: direction * 46, scale: 0.97, rotate: direction * 0.6 }),
   center: { opacity: 1, x: 0, scale: 1, rotate: 0 },
-  exit: { opacity: 0, x: -46, scale: 0.97, rotate: -0.6 },
+  exit: (direction: number) => ({ opacity: 0, x: direction * -46, scale: 0.97, rotate: direction * -0.6 }),
 }
 
 export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) {
