@@ -6,7 +6,10 @@ import { performance } from 'node:perf_hooks'
 const cases = [
   { voice: 'zh-CN-XiaoxiaoNeural', lang: 'zh-CN', text: '你好，我是 MyAgent。今天很高兴和你聊天。' },
   { voice: 'zh-CN-XiaoyiNeural', lang: 'zh-CN', text: '你好，欢迎使用 MyAgent。我们现在测试中文神经语音。' },
+  { voice: 'zh-CN-YunxiNeural', lang: 'zh-CN', text: '你好，我是云希。欢迎体验 MyAgent 的语音对话。' },
+  { voice: 'zh-CN-YunjianNeural', lang: 'zh-CN', text: '你好，我是云健。现在进行 Edge 中文语音测试。' },
   { voice: 'en-US-AriaNeural', lang: 'en-US', text: 'Hello, this is MyAgent. This is a live test of Microsoft Edge neural speech.' },
+  { voice: 'en-US-GuyNeural', lang: 'en-US', text: 'Hello, I am Guy. Welcome to the MyAgent voice experience.' },
 ]
 
 await mkdir('artifacts/edge-tts-smoke', { recursive: true })
