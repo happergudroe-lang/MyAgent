@@ -23,7 +23,7 @@ This path does not need a GPU, a home PC, a tunnel, or a separate voice server. 
    - `VOICE_PROVIDER=openai`
    - `OPENAI_API_KEY` = a server-side OpenAI API key with Audio API access and billing enabled
    - Optional `OPENAI_TTS_MODEL=gpt-4o-mini-tts`
-   - Optional `OPENAI_ASR_MODEL=gpt-4o-mini-transcribe`
+   - Optional `OPENAI_ASR_MODEL=gpt-transcribe`
    - Optional `OPENAI_TTS_INSTRUCTIONS=Speak naturally and conversationally. Use clear, warm, expressive delivery.`
 3. Apply the variables to Production (and Preview if desired), then redeploy.
 4. Sign in to MyAgent, open Voice, and check that the status reports **OpenAI TTS** and lists the preset voices.
@@ -119,7 +119,7 @@ VOICE_STUDIO_URL=http://127.0.0.1:3900
 VOICE_STUDIO_ASR_URL=http://127.0.0.1:3901\nVOICE_STUDIO_BASIC_AUTH=
 OPENAI_API_KEY=
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
-OPENAI_ASR_MODEL=gpt-4o-mini-transcribe
+OPENAI_ASR_MODEL=gpt-transcribe
 OPENAI_TTS_INSTRUCTIONS=Speak naturally and conversationally.
 ELEVENLABS_API_KEY=
 ELEVENLABS_MODEL_ID=eleven_multilingual_v2
