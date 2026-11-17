@@ -29,6 +29,16 @@ This is the default public speech path. It uses the unofficial Edge Read Aloud W
 
 The initial allow-list includes `zh-CN-XiaoxiaoNeural`, `zh-CN-XiaoyiNeural`, `zh-CN-YunxiNeural`, `zh-CN-YunjianNeural`, `en-US-AriaNeural`, and `en-US-GuyNeural`. The CI smoke test actually requests two Chinese voices and one English voice, measures first-audio-chunk latency and full MP3 duration, and uploads the MP3s plus JSON report as a GitHub Actions artifact. Do not describe a voice as verified until that job passes.
 
+**Live CI verification (GitHub-hosted Ubuntu runner, 2026-11-17; three real MP3 syntheses):**
+
+| Voice | First audio chunk | Full synthesis | MP3 duration | MP3 size |
+| --- | ---: | ---: | ---: | ---: |
+| `zh-CN-XiaoxiaoNeural` | 601 ms | 1,160 ms | 4.68 s | 56,160 bytes |
+| `zh-CN-XiaoyiNeural` | 269 ms | 539 ms | 6.10 s | 73,152 bytes |
+| `en-US-AriaNeural` | 233 ms | 672 ms | 6.55 s | 78,624 bytes |
+
+The live smoke job passed and uploaded the MP3 files plus `report.json`: [download test artifact](https://github.com/happergudroe-lang/MyAgent/actions/runs/44104783482/artifacts/14338715331). These are CI-runner measurements, not a promise of the same latency from every region or browser.
+
 **Important limits:** these are Microsoft Edge Read Aloud neural presets, **not GPT voices and not cloned voices**. Clone is explicitly unsupported. This is a no-API-key/no-metered-speech-bill path, but do not promise literally unlimited use: Microsoft can throttle, change, or block this unofficial endpoint and provides no SLA or guaranteed quota. Voice availability, latency, and quality can change without notice. The browser ASR path may also send microphone audio to the browser's speech-recognition provider; disclose this to users.
 
 ### Vercel Hobby feasibility and limits
