@@ -7,6 +7,7 @@ import { randomUUID, createHash } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from 'express-rate-limit'
 import path from 'node:path'
+import { readFileSync as readFileSyncNode } from 'node:fs'
 import { Pool } from 'pg'
 
 const app = express()
@@ -314,5 +315,22 @@ app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
   sendEvent(res,'[DONE]')
  }catch(error){const detail=error instanceof Error?error.message:'未知错误';console.error('[MyAgent] Chat generation failed:',detail);const friendly=detail==='MODEL_STREAM_FORMAT_ERROR'||detail==='MODEL_TOOL_ARGUMENTS_ERROR'?'模型返回格式异常，请重试。':/Unexpected non-whitespace character|JSON at position|JSON.parse/i.test(detail)?'模型返回格式异常，请重试。':/AbortError|aborted/i.test(detail)?'生成已中断，请重试。':'模型暂时无法完成请求，请稍后重试。';sendEvent(res,{error:friendly})}finally{res.end()}
 })
-if (!process.env.VERCEL) { app.use(express.static(path.resolve(process.cwd(),'dist'))); app.get('*',(req,res,next)=>{if(req.path.startsWith('/api/'))return next();res.sendFile(path.resolve(process.cwd(),'dist/index.html'))}); app.listen(port,'0.0.0.0',()=>console.log('MyAgent server listening on 0.0.0.0:'+port)) }
+if (!process.env.VERCEL) {
+  const DIST = path.resolve(process.cwd(), 'dist')
+  const OG_PLACEHOLDER = 'https://wy.tailacf523.ts.net:8443'
+  app.get(['/', '/index.html'], (req, res, next) => {
+    try {
+      const html = readFileSyncNode(path.join(DIST, 'index.html'), 'utf8')
+      const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim()
+      const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'localhost').split(',')[0].trim()
+      const origin = proto + '://' + host
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.send(html.split(OG_PLACEHOLDER).join(origin))
+    } catch { next() }
+  })
+  app.use(express.static(DIST))
+  app.get('*', (req, res, next) => { if (req.path.startsWith('/api/')) return next(); res.sendFile(path.join(DIST, 'index.html')) })
+  app.listen(port, '0.0.0.0', () => console.log('MyAgent server listening on 0.0.0.0:' + port))
+}
 export default app
