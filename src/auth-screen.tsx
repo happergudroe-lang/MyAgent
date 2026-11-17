@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react'
 import './auth-screen.css'
@@ -54,7 +55,7 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
     return data
   }
 
-  async function checkEmail(event: React.FormEvent<HTMLFormElement>) {
+  async function checkEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const normalized = email.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) || normalized.length > 254) {
@@ -79,7 +80,7 @@ export default function AuthScreen({ theme, onAuthenticated }: AuthScreenProps) 
     }
   }
 
-  async function authenticate(event: React.FormEvent<HTMLFormElement>, mode: 'login' | 'register') {
+  async function authenticate(event: FormEvent<HTMLFormElement>, mode: 'login' | 'register') {
     event.preventDefault()
     setBusy(true)
     setError('')
