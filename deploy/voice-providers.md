@@ -111,9 +111,9 @@ The URL must be reachable **from Vercel's server runtime**, not merely from your
 
 ## Capacity, latency, cost, and privacy
 
-- **Vercel is the control plane, not a GPU host.** It authenticates users and proxies audio. Long audio uploads and responses remain subject to Vercel function duration, body-size, and bandwidth limits. The current browser flow buffers the final audio before playback; it is not a token-by-token realtime audio stream.
+- **Vercel is the control plane, not a GPU host.** It authenticates users and proxies audio. Long audio uploads and responses remain subject to Vercel function duration, body-size, and bandwidth limits. The current browser flow buffers the final audio before playback; it is not a token-by-token realtime audio stream. The UI's TTS timing is full synthesis response time, not first-chunk time; CI separately measures first-chunk latency.
 - **Concurrency and abuse control:** MyAgent currently applies an IP-based limit of 20 TTS/ASR requests per minute and 3 clone uploads per hour. This is a basic guardrail, not a per-account quota or distributed queue; behind proxies, configure Express trusted-proxy handling carefully and add a shared Redis-backed per-user budget before a large public launch. Cloud vendors also enforce account-level RPM/concurrency quotas. A single local GPU host serializes or competes for VRAM across users and can become unavailable under load.
-- **Cost:** OpenAI transcription and TTS, ElevenLabs TTS/STT/cloning, and MiniMax TTS are metered by their current account plans and usage dimensions. Set provider spending alerts and per-account limits before sharing the URL. No free or unlimited usage is assumed.
+- **Cost:** `edge` has no API key and no per-character API billing from MyAgent; it relies on Microsoft's consumer Edge Read Aloud endpoint, which has no published SLA or guaranteed unlimited quota and may be throttled or withdrawn. Browser Web Speech recognition may send audio to the browser vendor's service. OpenAI, ElevenLabs, and MiniMax remain optional paid adapters only; do not enable them for the zero-cost setup.
 - **Privacy:** recordings and text are sent to the selected provider. Review its data retention, training, regional processing, and voice-cloning consent terms. Never upload another person's voice without authorization. API keys must only be configured as server-side environment variables, never `VITE_*`, browser storage, or committed files.
 - **AI disclosure:** tell users that generated audio is AI-generated. A voice clone should not be represented as the real speaker speaking live.
 - **No-key/no-GPU reality:** without a cloud API key, OpenAI/ElevenLabs/MiniMax cloud modes cannot authenticate; without a reachable GPU host, local mode cannot synthesize or transcribe. The app reports unavailable and does not silently play browser speech as a fallback.
@@ -135,7 +135,7 @@ Official price references: [OpenAI audio model and pricing](https://developers.o
 ## Environment variable reference
 
 ```dotenv
-VOICE_PROVIDER=local
+VOICE_PROVIDER=edge
 VOICE_STUDIO_URL=http://127.0.0.1:3900
 VOICE_STUDIO_ASR_URL=http://127.0.0.1:3901\nVOICE_STUDIO_BASIC_AUTH=
 OPENAI_API_KEY=
