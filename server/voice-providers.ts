@@ -1,9 +1,11 @@
-type VoiceProviderId = 'local' | 'openai' | 'elevenlabs' | 'minimax' | 'fish'
+import { EdgeTTS } from 'node-edge-tts'
+
+type VoiceProviderId = 'edge' | 'local' | 'openai' | 'elevenlabs' | 'minimax' | 'fish'
 
 const openAiVoices = ['alloy','ash','ballad','coral','echo','fable','marin','cedar','nova','onyx','sage','shimmer','verse']
 const localTtsUrl = (process.env.VOICE_STUDIO_URL || 'http://127.0.0.1:3900').replace(/\/$/, '')
 const localAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || 'http://127.0.0.1:3901').replace(/\/$/, '')
-const provider = (process.env.VOICE_PROVIDER || 'local').toLowerCase() as VoiceProviderId
+const provider = (process.env.VOICE_PROVIDER || 'edge').toLowerCase() as VoiceProviderId
 const openAiKey = process.env.OPENAI_API_KEY || ''
 const elevenKey = process.env.ELEVENLABS_API_KEY || ''
 const minimaxKey = process.env.MINIMAX_API_KEY || ''
@@ -11,12 +13,13 @@ const fishKey = process.env.FISH_AUDIO_API_KEY || ''
 const fishDefaultVoiceId = process.env.FISH_AUDIO_VOICE_ID || ''
 const localBasicAuth = process.env.VOICE_STUDIO_BASIC_AUTH || ''
 const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
+let edgeProbeCache: { checkedAt:number; status:VoiceStatus } | null = null
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
-export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
+export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; browserAsrSupported?: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
 
 function keyFor(id: VoiceProviderId) { return id === 'openai' ? openAiKey : id === 'elevenlabs' ? elevenKey : id === 'minimax' ? minimaxKey : id === 'fish' ? fishKey : '' }
-function labelFor(id: VoiceProviderId) { return ({ local: 'VoiceStudio 本地', openai: 'OpenAI TTS', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', fish: 'Fish Audio' } as Record<VoiceProviderId,string>)[id] }
+function labelFor(id: VoiceProviderId) { return ({ edge: 'Microsoft Edge 神经语音（免费）', local: 'VoiceStudio 本地', openai: 'OpenAI TTS', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', fish: 'Fish Audio' } as Record<VoiceProviderId,string>)[id] }
 function jsonError(payload: any, fallback: string) { return String(payload?.error?.message || payload?.detail || payload?.message || payload?.error || fallback) }
 async function request(url: string, init: RequestInit = {}, timeoutMs = 30000) {
   const externalSignal = init.signal
@@ -34,7 +37,32 @@ async function localRequest(url: string, init: RequestInit = {}, timeoutMs = 300
 
 export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   const started = Date.now()
-  if (!['local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
+  if (!['edge','local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
+  if (provider === 'edge') {
+    if (edgeProbeCache && Date.now()-edgeProbeCache.checkedAt < 20000) return {...edgeProbeCache.status}
+    const voices:VoiceItem[] = [
+      {id:'zh-CN-XiaoxiaoNeural',name:'晓晓 · 女声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-XiaoyiNeural',name:'晓伊 · 女声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-YunxiNeural',name:'云希 · 男声',type:'preset',language:'中文（普通话）',provider},
+      {id:'zh-CN-YunjianNeural',name:'云健 · 男声',type:'preset',language:'中文（普通话）',provider},
+      {id:'en-US-AriaNeural',name:'Aria · Female',type:'preset',language:'English (US)',provider},
+      {id:'en-US-GuyNeural',name:'Guy · Male',type:'preset',language:'English (US)',provider}
+    ]
+    try {
+      const probe = new EdgeTTS({voice:'zh-CN-XiaoxiaoNeural',lang:'zh-CN',outputFormat:'audio-24khz-96kbitrate-mono-mp3',timeout:12000})
+      const iterator = probe.streamAudio('语音服务连接测试。')
+      const first = await iterator.next()
+      await iterator.return(undefined)
+      if (first.done || !Buffer.isBuffer(first.value) || !first.value.length) throw new Error('Edge TTS 已连接，但没有返回音频数据。')
+      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:true,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:true,latencyMs:Date.now()-started}
+      edgeProbeCache={checkedAt:Date.now(),status}
+      return status
+    } catch(error) {
+      const status:VoiceStatus = {provider,providerLabel:labelFor(provider),available:false,voices,cloneSupported:false,transcribeSupported:false,browserAsrSupported:true,ttsSupported:false,error:/429/.test(error instanceof Error?error.message:String(error))?'Microsoft Edge TTS 当前请求过于频繁（HTTP 429），请稍后重试。':(error instanceof Error?error.message:'Microsoft Edge TTS 连接失败'),latencyMs:Date.now()-started}
+      edgeProbeCache={checkedAt:Date.now(),status}
+      return status
+    }
+  }
   if (provider === 'local') {
     try {
       const [health, list, asrHealth] = await Promise.all([localRequest(localTtsUrl + '/health', {}, 2500), localRequest(localTtsUrl + '/v1/audio/voices', {}, 2500), localRequest(localAsrUrl + '/health', {}, 2500).catch(() => null)])
@@ -86,6 +114,29 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
 }
 
 export async function synthesizeVoice(text: string, voiceId: string, signal?: AbortSignal): Promise<Response> {
+  if (provider === 'edge') {
+    const allowed = ['zh-CN-XiaoxiaoNeural','zh-CN-XiaoyiNeural','zh-CN-YunxiNeural','zh-CN-YunjianNeural','en-US-AriaNeural','en-US-GuyNeural']
+    if (!allowed.includes(voiceId)) throw new Error('所选音色不在 Edge TTS 预设列表中。')
+    if (text.length > 5000) throw new Error('Edge TTS 单次播报最多 5000 个字符。')
+    const lang = voiceId.startsWith('en-') ? 'en-US' : 'zh-CN'
+    const tts = new EdgeTTS({voice:voiceId,lang,outputFormat:'audio-24khz-96kbitrate-mono-mp3',timeout:45000})
+    const chunks:Buffer[] = []
+    const iterator = tts.streamAudio(text)
+    try {
+      while (true) {
+        if (signal?.aborted) throw new Error('语音请求已被客户端中断')
+        const next = await iterator.next()
+        if (next.done) break
+        if (Buffer.isBuffer(next.value)) chunks.push(next.value)
+      }
+    } catch(error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      if (/429/.test(detail)) throw new Error('Microsoft Edge TTS 当前请求过于频繁（HTTP 429），请稍后重试。')
+      throw error
+    } finally { await iterator.return(undefined).catch(()=>undefined) }
+    if (!chunks.length) throw new Error('Microsoft Edge TTS 未返回音频数据。')
+    return new Response(Buffer.concat(chunks),{status:200,headers:{'Content-Type':'audio/mpeg','Cache-Control':'no-store'}})
+  }
   if (provider === 'local') return localRequest(localTtsUrl + '/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'tts-1',voice:voiceId,input:text,response_format:'mp3'}),signal }, 180000)
   if (provider === 'openai') {
     if (!openAiKey) throw missingKey(provider)
@@ -178,5 +229,5 @@ export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filena
     if(!payload.voice_id)throw new Error('ElevenLabs 未返回 voice_id。')
     return {id:String(payload.voice_id),name}
   }
-  throw new Error(provider==='openai'?'OpenAI 标准 TTS 仅提供预设音色，不支持任意音色克隆。':labelFor(provider)+' 克隆适配器当前不可用。')
+  throw new Error(provider==='edge'?'Microsoft Edge 免费神经语音使用预设音色，不支持任意音色克隆。':provider==='openai'?'OpenAI 标准 TTS 仅提供预设音色，不支持任意音色克隆。':labelFor(provider)+' 克隆适配器当前不可用。')
 }
