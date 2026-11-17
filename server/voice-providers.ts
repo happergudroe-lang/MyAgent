@@ -8,6 +8,7 @@ const openAiKey = process.env.OPENAI_API_KEY || ''
 const elevenKey = process.env.ELEVENLABS_API_KEY || ''
 const minimaxKey = process.env.MINIMAX_API_KEY || ''
 const fishKey = process.env.FISH_AUDIO_API_KEY || ''
+const fishDefaultVoiceId = process.env.FISH_AUDIO_VOICE_ID || ''
 const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
@@ -64,8 +65,18 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
     const ready = Boolean(minimaxKey && minimaxGroupId)
     return { provider, providerLabel:labelFor(provider), available:ready, voices, cloneSupported:false, transcribeSupported:false, ttsSupported:ready, error:ready?undefined:(!minimaxKey?'缺少 MINIMAX_API_KEY。':'缺少 MINIMAX_GROUP_ID。'), latencyMs:Date.now()-started }
   }
-  // Fish Audio remains unavailable until its account/model management and ASR adapters are configured.
-  return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:labelFor(provider)+' 已预留 Provider 插槽，但当前版本尚未实现 API 适配；不会回退或伪装为可用。', latencyMs:Date.now()-started }
+  if (provider === 'fish') {
+    try {
+      const response = await request('https://api.fish.audio/model?page_size=100&page_number=1&self=true&visibility=private', { headers:{Authorization:'Bearer '+fishKey} }, 12000)
+      const data:any = await response.json().catch(()=>({}))
+      if (!response.ok) throw new Error(jsonError(data,'Fish Audio 音色列表请求失败（HTTP '+response.status+'）'))
+      const voices:VoiceItem[] = (data.items||[]).filter((v:any)=>v.state!=='failed').map((v:any)=>({id:String(v._id),name:String(v.title||v._id),type:'profile' as const,language:'自动识别',provider})).filter((v:VoiceItem)=>v.id)
+      if (fishDefaultVoiceId && !voices.some(v=>v.id===fishDefaultVoiceId)) voices.unshift({id:fishDefaultVoiceId,name:'默认 Fish Audio 音色',type:'preset',language:'自动识别',provider})
+      const ready = voices.length > 0
+      return { provider, providerLabel:labelFor(provider), available:ready, voices, cloneSupported:true, transcribeSupported:false, ttsSupported:true, error:ready?undefined:'Fish Audio 账号暂无可用音色；请上传有授权的参考录音创建私有音色。', latencyMs:Date.now()-started }
+    } catch(error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:true, transcribeSupported:false, ttsSupported:false, error:error instanceof Error?error.message:'Fish Audio 连接失败', latencyMs:Date.now()-started } }
+  }
+  return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:'未知语音 Provider。', latencyMs:Date.now()-started }
 }
 
 export async function synthesizeVoice(text: string, voiceId: string): Promise<Response> {
@@ -95,7 +106,7 @@ export async function synthesizeVoice(text: string, voiceId: string): Promise<Re
 export async function transcribeVoice(buffer: Buffer, mimeType: string, filename: string): Promise<{text:string;latencyMs:number}> {
   const started = Date.now()
   const form = new FormData()
-  form.append('file', new Blob([buffer], {type:mimeType||'audio/webm'}), filename||'recording.webm')
+  form.append('file', new Blob([new Uint8Array(buffer)], {type:mimeType||'audio/webm'}), filename||'recording.webm')
   if (provider === 'local') {
     form.append('model','whisper-1'); form.append('response_format','json')
     const response = await request(localAsrUrl+'/v1/audio/transcriptions',{method:'POST',body:form},180000)
