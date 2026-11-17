@@ -59,6 +59,17 @@ The current app includes bcrypt password hashing, HttpOnly session cookies, per-
 Accounts and conversation history are stored in SQLite on the server and can sync across devices when the same account is used. Workspace preferences (selected model, provider, enabled tools and selected Agent) remain browser-local. Uploaded files are parsed in memory and are not persisted. The included Render Blueprint uses a persistent disk for SQLite; the database is not an encrypted application-level vault.
 
 
+## Public voice providers
+
+MyAgent routes the authenticated `/api/voice/status`, `tts`, `transcribe`, and `clone` endpoints through the server-side `VOICE_PROVIDER` setting. Supported modes are VoiceStudio local, OpenAI Speech API, ElevenLabs, MiniMax TTS, and Fish Audio TTS/voice-model creation. Each provider reports its actual capabilities; unsupported ASR or cloning operations return explicit errors rather than silently falling back.
+
+- Fast public setup without a GPU: set `VOICE_PROVIDER=openai` and configure `OPENAI_API_KEY` in Vercel. OpenAI supplies preset voices and transcription but does **not** clone arbitrary voices.
+- Cloud cloning: `VOICE_PROVIDER=elevenlabs` with `ELEVENLABS_API_KEY`, or `VOICE_PROVIDER=fish` with `FISH_AUDIO_API_KEY`. Fish Audio currently provides TTS and private voice-model creation, but this adapter does not provide ASR.
+- MiniMax currently provides TTS only; configure both `MINIMAX_API_KEY` and `MINIMAX_GROUP_ID`.
+- Local mode requires VoiceStudio reachable from the MyAgent server, not `127.0.0.1` on a Vercel function.
+
+See [deploy/voice-providers.md](deploy/voice-providers.md) for exact environment variables, public GPU-host setup, costs, concurrency, privacy, and known limitations. The browser flow is turn-based (record → transcribe → chat → synthesize) and buffers the generated audio before playback; it is not a fully streamed realtime audio session.
+
 ## Built-in Agent tools
 
 The server currently exposes two low-risk tools to compatible models: `calculator` (numeric arithmetic expressions only) and `get_current_time` (IANA timezone-aware time lookup). Tool execution is limited to enabled tools sent by the UI. The server caps each agent turn at five tool rounds. Arbitrary code execution, shell access, filesystem access and unrestricted web browsing are intentionally not exposed.
