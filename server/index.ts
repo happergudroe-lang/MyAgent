@@ -250,7 +250,7 @@ app.post(['/v1/completions','/api/v1/completions'],externalApiLimiter,requireExt
  try{const upstream=await fetch(baseUrl+'/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify({...req.body,model:String(req.body?.model||process.env.MY_MODEL||'myrqvia')})});res.status(upstream.status);res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json');if(!upstream.body)return res.end();const reader=upstream.body.getReader();while(true){const {value,done}=await reader.read();if(done)break;if(!res.write(value))await new Promise<void>(resolve=>res.once('drain',resolve))}res.end()}catch{if(!res.headersSent)res.status(502).json({error:{message:'FIM completion endpoint is unavailable on the local gateway.',type:'api_error'}});else res.end()}
 })
 
-app.post('/api/chat',requireAuth,chatLimiter,async(req,res)=>{
+app.post('/api/chat',requireAuth,chatLimiter,async(req:AuthRequest,res)=>{
  const {messages,model,provider:requestedProvider,enabledTools=[],apiKey:sessionApiKey,baseUrl:requestedBaseUrl}=req.body??{}
  const providerId=(requestedProvider||'my') as ProviderId
  const config=providers[providerId]
