@@ -97,7 +97,7 @@ app.get('/api/voice/status', requireAuth, async (_req, res) => {
   const status = await getVoiceProviderStatus()
   const config = readVoiceConfig()
   const selected = status.voices.find(v => v.id === config.profileId)
-  if (!selected && status.voices.length) { const fallback = status.provider === 'local' ? (status.voices.find(v => v.type === 'profile') || status.voices[0]) : status.voices[0]; config.profileId = fallback.id; config.profileName = fallback.name; writeVoiceConfig(config) }
+  if ((!selected || (status.provider === 'local' && selected.type !== 'profile')) && status.voices.length) { const fallback = status.provider === 'local' ? (status.voices.find(v => v.type === 'profile') || status.voices[0]) : status.voices[0]; config.profileId = fallback.id; config.profileName = fallback.name; writeVoiceConfig(config) }
   res.json({ ...status, config, latencyMs: Date.now() - started, profileCount: status.voices.filter(v => v.type === 'profile').length })
  } catch (error) { res.status(502).json({ provider: process.env.VOICE_PROVIDER || 'local', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, config: readVoiceConfig(), latencyMs: Date.now()-started, error: voiceError(error) }) }
 })
