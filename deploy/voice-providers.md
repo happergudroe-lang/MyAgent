@@ -50,16 +50,55 @@ Set `VOICE_PROVIDER=minimax`, `MINIMAX_API_KEY`, and the account's `MINIMAX_GROU
 
 ## Local VoiceStudio on a separate GPU host
 
-Use this when you want to keep OmniVoice/VoiceStudio cloning and inference. The GPU machine must stay powered on and expose a stable HTTPS URL reachable by the MyAgent server.
+Use this when you want to keep OmniVoice/VoiceStudio cloning and inference. The GPU machine must stay powered on and expose stable HTTPS endpoints reachable by the MyAgent server.
 
-1. Run VoiceStudio on the GPU host with its TTS service listening on port 3900 and ASR on 3901.
-2. Put a TLS reverse proxy (Caddy, Nginx, or a managed HTTPS tunnel) in front of those services. Do not expose raw development ports directly to the public internet.
-3. Restrict the upstream to MyAgent where possible (firewall allow-list, private network, or proxy authentication). If the VoiceStudio service itself has no authentication, do not expose it as an unrestricted public endpoint.
-4. Set the Vercel server environment:
+1. Run VoiceStudio on the GPU host with its TTS service listening on port 3900 and ASR on 3901. Bind the model services to `127.0.0.1` so they are not directly exposed.
+2. Install Nginx and Certbot, create DNS records for `tts.voice.example.com` and `asr.voice.example.com`, and create a Basic Auth user:
+   ```bash
+   sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx apache2-utils
+   sudo htpasswd -c /etc/nginx/.htpasswd myagent
+   ```
+   Choose a strong password when prompted. Save the following as `/etc/nginx/sites-available/myagent-voice` (replace the hostnames):
+   ```nginx
+   server {
+     listen 80;
+     server_name tts.voice.example.com;
+     location / {
+       auth_basic "MyAgent voice gateway";
+       auth_basic_user_file /etc/nginx/.htpasswd;
+       proxy_pass http://127.0.0.1:3900;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_read_timeout 180s;
+     }
+   }
+   server {
+     listen 80;
+     server_name asr.voice.example.com;
+     location / {
+       auth_basic "MyAgent voice gateway";
+       auth_basic_user_file /etc/nginx/.htpasswd;
+       proxy_pass http://127.0.0.1:3901;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_read_timeout 180s;
+     }
+   }
+   ```
+   Enable the site and issue certificates:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/myagent-voice /etc/nginx/sites-enabled/myagent-voice
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo certbot --nginx -d tts.voice.example.com -d asr.voice.example.com
+   ```
+3. Set the Vercel server environment:
    - `VOICE_PROVIDER=local`
-   - `VOICE_STUDIO_URL=https://voice.example.com`
-   - `VOICE_STUDIO_ASR_URL=https://asr.example.com`
-5. Redeploy MyAgent and verify `GET /api/voice/status` while signed in.
+   - `VOICE_STUDIO_URL=https://tts.voice.example.com`
+   - `VOICE_STUDIO_ASR_URL=https://asr.voice.example.com`
+   - `VOICE_STUDIO_BASIC_AUTH=myagent:THE_PASSWORD_YOU_CHOSE` (server-side only; the adapter adds the Basic Auth header)
+4. Redeploy MyAgent and verify `GET /api/voice/status` while signed in.
 
 The URL must be reachable **from Vercel's server runtime**, not merely from your browser. A `127.0.0.1` URL points to the Vercel function container and will not reach the home PC. A home-PC tunnel still depends on that PC's uptime, network, GPU memory, and upload bandwidth; it is not a high-availability service.
 
@@ -77,7 +116,7 @@ The URL must be reachable **from Vercel's server runtime**, not merely from your
 ```dotenv
 VOICE_PROVIDER=local
 VOICE_STUDIO_URL=http://127.0.0.1:3900
-VOICE_STUDIO_ASR_URL=http://127.0.0.1:3901
+VOICE_STUDIO_ASR_URL=http://127.0.0.1:3901\nVOICE_STUDIO_BASIC_AUTH=
 OPENAI_API_KEY=
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
 OPENAI_ASR_MODEL=gpt-4o-mini-transcribe
