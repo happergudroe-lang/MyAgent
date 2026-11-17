@@ -576,3 +576,104 @@ body.myagent-resizing .app-shell .sidebar,body.myagent-resizing .app-shell .work
 .app-shell .composer textarea{resize:none;max-height:180px;overflow-y:auto}
 .app-shell .chat-stage{overflow:hidden;position:relative}
 .app-shell .jump-latest{bottom:auto!important;top:-46px!important;left:50%!important;transform:translateX(-50%)!important}
+
+
+/* ==== Chat scroll no smooth ==== */
+.app-shell .messages{scroll-behavior:auto!important;overscroll-behavior-y:contain}
+.app-shell .messages [data-testid="virtuoso-scroller"]{scroll-behavior:auto!important}
+
+/* ==== Canvas pane styles ==== */
+.app-shell .canvas-pane{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg-system)}
+.app-shell .canvas-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;flex:0 0 auto;border-bottom:.5px solid var(--separator);background:var(--material-regular);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
+.app-shell .canvas-tabs{display:inline-flex;gap:2px;padding:2px;border-radius:10px;background:var(--fill-quaternary)}
+.app-shell .canvas-tabs button{height:28px;min-width:52px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--label-secondary);font-size:12px;font-weight:600;transition:background-color .16s ease,color .16s ease,transform .24s cubic-bezier(.34,1.56,.64,1)}
+.app-shell .canvas-tabs button.active{background:var(--bg-system);color:var(--label);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.app-shell .canvas-tabs button:active{transform:scale(.96)}
+.app-shell .canvas-actions{display:flex;gap:2px}
+.app-shell .canvas-actions button{width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--label-secondary);display:grid;place-items:center;transition:background-color .16s ease,color .16s ease,transform .24s cubic-bezier(.34,1.56,.64,1)}
+.app-shell .canvas-actions button:hover{background:var(--fill-quaternary);color:var(--label)}
+.app-shell .canvas-actions button:active{transform:scale(.94)}
+.app-shell .canvas-preview{flex:1 1 auto;min-height:0;padding:10px;overflow:hidden;animation:canvas-fade .26s cubic-bezier(.16,1,.3,1)}
+.app-shell .canvas-preview iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.app-shell .canvas-code{flex:1 1 auto;min-height:0;margin:10px;padding:14px;border:0;border-radius:12px;background:var(--bg-secondary);color:var(--label);font-family:ui-monospace,SFMono-Regular,Consolas,"SF Mono",monospace;font-size:12.5px;line-height:1.72;resize:none;outline:none}
+.app-shell .workbench-empty .workbench-empty-action{margin-top:14px;height:36px;padding:0 14px;border:1px solid var(--separator);border-radius:10px;background:var(--bg-system);color:var(--label);display:inline-flex;align-items:center;gap:7px;font-size:13px;transition:background-color .18s ease,transform .24s cubic-bezier(.34,1.56,.64,1)}
+.app-shell .workbench-empty .workbench-empty-action:active{transform:scale(.96)}
+.app-shell .work-pane{animation:pane-in .26s cubic-bezier(.16,1,.3,1)}
+@keyframes canvas-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes pane-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.app-shell .canvas-preview,.app-shell .work-pane{animation:none!important}}
+
+/* ==== Composer ChatGPT style ==== */
+.app-shell .composer{border-radius:24px;padding:12px 14px 10px;border:.5px solid var(--separator);background:var(--bg-tertiary);box-shadow:0 6px 24px rgba(0,0,0,.16);transition:border-color .18s cubic-bezier(.2,0,0,1),box-shadow .18s cubic-bezier(.2,0,0,1)}
+.app-shell .composer:focus-within{border-color:color-mix(in srgb,var(--sys-blue) 45%,var(--separator));box-shadow:0 0 0 3px color-mix(in srgb,var(--sys-blue) 12%,transparent),0 8px 28px rgba(0,0,0,.2)}
+.app-shell .composer textarea{font-size:15px;line-height:24px;min-height:24px;padding:2px 2px 6px;background:transparent}
+.app-shell .send-btn{width:34px;height:34px;min-width:34px;border-radius:999px;background:var(--sys-blue);color:#fff;display:grid;place-items:center;border:0;transition:transform .24s cubic-bezier(.34,1.56,.64,1),background-color .18s ease,color .18s ease,opacity .18s ease}
+.app-shell .send-btn:disabled{background:var(--fill-quaternary);color:var(--label-tertiary);opacity:1}
+.app-shell .send-btn.is-stop{background:var(--label);color:var(--bg-system)}
+.app-shell .send-btn:active{transform:scale(.92)}
+.app-shell .composer-tools button{height:34px;border-radius:10px}
+.app-shell .agent-select-wrap{height:34px;border-radius:999px;padding:0 10px;background:var(--fill-quaternary);border:0}
+.app-shell .composer-hint{font-size:11px;opacity:.7}
+@media (max-width:760px){
+  .app-shell .composer{border-radius:22px;padding:10px 12px 8px}
+  .app-shell .composer textarea{font-size:16px}
+}
+
+/* ==== Sidebar iOS stagger & press ==== */
+.app-shell .sidebar button{transition:background-color .16s ease,color .16s ease,transform .24s cubic-bezier(.34,1.56,.64,1)}
+.app-shell .sidebar button:active{transform:scale(.985)}
+.app-shell .sidebar .main-nav button,
+.app-shell .sidebar .sidebar-nav-caption,
+.app-shell .sidebar .history-head,
+.app-shell .sidebar .search-wrap,
+.app-shell .sidebar .chat-list,
+.app-shell .sidebar .profile{animation:sidebar-in .28s cubic-bezier(.16,1,.3,1) both}
+.app-shell .sidebar .main-nav button:nth-child(1){animation-delay:0ms}
+.app-shell .sidebar .main-nav button:nth-child(2){animation-delay:18ms}
+.app-shell .sidebar .main-nav button:nth-child(3){animation-delay:36ms}
+.app-shell .sidebar .main-nav button:nth-child(4){animation-delay:54ms}
+.app-shell .sidebar .main-nav button:nth-child(5){animation-delay:72ms}
+.app-shell .sidebar .main-nav button:nth-child(6){animation-delay:90ms}
+@keyframes sidebar-in{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  .app-shell .sidebar .main-nav button,.app-shell .sidebar .sidebar-nav-caption,.app-shell .sidebar .history-head,.app-shell .sidebar .search-wrap,.app-shell .sidebar .chat-list,.app-shell .sidebar .profile{animation:none!important}
+}
+
+/* ==== Workbench motion polish ==== */
+.app-shell .workbench-shell{contain:layout paint;will-change:width}
+.app-shell .composer .send-btn{width:34px;height:34px;min-width:34px;flex:0 0 34px;border-radius:999px}
+@media (max-width:760px){
+  .app-shell .workbench-shell{display:flex!important;position:fixed;inset:0;z-index:150;width:100%!important;max-width:none!important;height:100dvh;border-left:0;transform:translateX(100%);transition:transform .34s cubic-bezier(.32,.72,0,1)}
+  .app-shell .workbench-shell:not(.is-closed){transform:translateX(0)}
+  .app-shell .workbench-shell.is-closed{transform:translateX(100%)}
+  .app-shell .workbench{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  .app-shell .workbench-close{min-width:44px;min-height:44px}
+}
+@media (prefers-reduced-motion: reduce){
+  .app-shell .workbench-shell{transition:none!important}
+}
+
+/* ==== Mobile workbench toolbar + topbar title ==== */
+@media (max-width:760px){
+  .app-shell .workbench-toolbar{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 10px;scrollbar-width:none}
+  .app-shell .workbench-toolbar::-webkit-scrollbar{display:none}
+  .app-shell .workbench-heading b{font-size:13px}
+  .app-shell .workbench-heading span{display:none}
+  .app-shell .workbench-layouts{display:none!important}
+  .app-shell .workbench-theme{display:none!important}
+  .app-shell .workbench-close{flex:0 0 auto}
+}
+.app-shell .topbar .chat-title,
+.app-shell .topbar .breadcrumb,
+.app-shell .topbar .chat-title-text{min-width:0}
+.app-shell .topbar .chat-title-text,
+.app-shell .topbar .breadcrumb strong,
+.app-shell .topbar h1,
+.app-shell .topbar h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ==== send button morph ==== */
+.app-shell .send-btn svg{transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .18s ease}
+.app-shell .send-btn.is-stop svg{transform:rotate(45deg) scale(.92)}
+.app-shell .send-btn{animation:send-pop .26s cubic-bezier(.34,1.56,.64,1)}
+@keyframes send-pop{0%{transform:scale(.9)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.app-shell .send-btn{animation:none!important}}
