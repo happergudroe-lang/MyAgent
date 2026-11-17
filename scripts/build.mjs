@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'production'
 
 const commands = [
   ['tsc', ['-b']],
+  ['tsc', ['-p', 'tsconfig.server.json']],
   ['vite', ['build']],
 ]
 
