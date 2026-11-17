@@ -2,7 +2,7 @@ type VoiceProviderId = 'local' | 'openai' | 'elevenlabs' | 'minimax' | 'fish'
 
 const openAiVoices = ['alloy','ash','ballad','coral','echo','fable','marin','cedar','nova','onyx','sage','shimmer','verse']
 const localTtsUrl = (process.env.VOICE_STUDIO_URL || 'http://127.0.0.1:3900').replace(/\/$/, '')
-const localAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || localTtsUrl).replace(/\/$/, '')
+const localAsrUrl = (process.env.VOICE_STUDIO_ASR_URL || 'http://127.0.0.1:3901').replace(/\/$/, '')
 const provider = (process.env.VOICE_PROVIDER || 'local').toLowerCase() as VoiceProviderId
 const openAiKey = process.env.OPENAI_API_KEY || ''
 const elevenKey = process.env.ELEVENLABS_API_KEY || ''
@@ -31,13 +31,13 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
   if (!['local','openai','elevenlabs','minimax','fish'].includes(provider)) return { provider, providerLabel: '未知语音 Provider', available: false, voices: [], cloneSupported: false, transcribeSupported: false, ttsSupported: false, error: 'VOICE_PROVIDER 配置值无效。', latencyMs: Date.now()-started }
   if (provider === 'local') {
     try {
-      const [health, list] = await Promise.all([request(localTtsUrl + '/health', {}, 2500), request(localTtsUrl + '/v1/audio/voices', {}, 2500)])
+      const [health, list, asrHealth] = await Promise.all([request(localTtsUrl + '/health', {}, 2500), request(localTtsUrl + '/v1/audio/voices', {}, 2500), request(localAsrUrl + '/health', {}, 2500).catch(() => null)])
       const hp = await health.json().catch(() => ({}))
       const payload: any = await list.json().catch(() => ({}))
       const raw = Array.isArray(payload) ? payload : (payload.voices || payload.data || [])
       const voices = raw.map((v:any) => ({ id:String(v.id || v.voice_id || ''), name:String(v.name || v.id || '未命名音色'), type:(v.type === 'profile' || v.kind === 'profile' ? 'profile' : 'preset') as 'profile'|'preset', language:String(v.language || 'unknown'), provider:'local' })).filter((v:VoiceItem) => v.id)
       const ok = health.ok && list.ok
-      return { provider, providerLabel:labelFor(provider), available:ok, voices, cloneSupported:true, transcribeSupported:true, ttsSupported:true, error:ok ? undefined : 'VoiceStudio health 或音色列表接口不可用。', latencyMs:Date.now()-started, baseUrl:localTtsUrl }
+      return { provider, providerLabel:labelFor(provider), available:ok, voices, cloneSupported:ok, transcribeSupported:Boolean(asrHealth?.ok), ttsSupported:ok, error:ok ? (asrHealth?.ok ? undefined : 'VoiceStudio TTS 已连接，但 ASR 服务未连接。') : 'VoiceStudio health 或音色列表接口不可用。', latencyMs:Date.now()-started, baseUrl:localTtsUrl }
     } catch (error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:true, transcribeSupported:true, ttsSupported:true, error:error instanceof Error?error.message:'VoiceStudio 连接失败', latencyMs:Date.now()-started, baseUrl:localTtsUrl } }
   }
   if (provider === 'openai') {
@@ -55,7 +55,7 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
       const response = await request('https://api.elevenlabs.io/v1/voices', { headers:{'xi-api-key':elevenKey} }, 12000)
       const data:any = await response.json().catch(()=>({}))
       if (!response.ok) throw new Error(jsonError(data,'ElevenLabs 音色列表请求失败（HTTP '+response.status+'）'))
-      const voices = (data.voices || []).map((v:any)=>({id:String(v.voice_id),name:String(v.name||v.voice_id),type:'profile' as const,language:'多语言',provider})).filter((v:VoiceItem)=>v.id)
+      const voices = (data.voices || []).map((v:any)=>({id:String(v.voice_id),name:String(v.name||v.voice_id),type:(v.category==='cloned'?'profile':'preset') as 'profile'|'preset',language:'多语言',provider})).filter((v:VoiceItem)=>v.id)
       return { provider, providerLabel:labelFor(provider), available:true, voices, cloneSupported:true, transcribeSupported:true, ttsSupported:true, latencyMs:Date.now()-started }
     } catch(error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:true, transcribeSupported:true, ttsSupported:true, error:error instanceof Error?error.message:'ElevenLabs 连接失败', latencyMs:Date.now()-started } }
   }
@@ -165,7 +165,7 @@ export async function cloneVoiceProfile(buffer: Buffer, mimeType: string, filena
   }
   if(provider==='elevenlabs') {
     if(!elevenKey)throw missingKey(provider)
-    const form=new FormData();form.append('name',name);form.append('files',new Blob([buffer],{type:mimeType||'audio/webm'}),filename||'reference.webm');form.append('description','User-provided voice sample')
+    const form=new FormData();form.append('name',name);form.append('files',new Blob([new Uint8Array(buffer)],{type:mimeType||'audio/webm'}),filename||'reference.webm');form.append('description','User-provided voice sample')
     const response=await request('https://api.elevenlabs.io/v1/voices/add',{method:'POST',headers:{'xi-api-key':elevenKey},body:form},180000)
     const payload:any=await response.json().catch(()=>({}))
     if(!response.ok)throw new Error(jsonError(payload,'ElevenLabs 克隆失败'))
