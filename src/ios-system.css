@@ -563,3 +563,16 @@
 }
 @keyframes ios-scrim-in { from { opacity: 0; } to { opacity: 1; } }
 .app-shell[data-theme="dark"] .sidebar-scrim { background: rgba(0,0,0,.52); }
+
+/* ==== Chat layout & scroll stability ==== */
+.app-shell .sidebar{overflow:hidden}
+.app-shell .chat-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:2px 2px 6px 0}
+.app-shell .profile{flex:0 0 auto;margin-top:8px;padding-top:8px;border-top:.5px solid var(--separator);background:inherit}
+.app-shell .history-head,.app-shell .search-wrap{flex:0 0 auto}
+.app-shell .messages [data-testid="virtuoso-item-list"]{width:100%;max-width:890px;margin:0 auto}
+.app-shell .composer-wrap{width:min(100%,900px);margin:0 auto;padding-left:0;padding-right:10px;position:relative}
+.app-shell .sidebar,.app-shell .workbench-shell{transition:width .3s cubic-bezier(.32,.72,0,1),flex-basis .3s cubic-bezier(.32,.72,0,1)}
+body.myagent-resizing .app-shell .sidebar,body.myagent-resizing .app-shell .workbench-shell{transition:none!important}
+.app-shell .composer textarea{resize:none;max-height:180px;overflow-y:auto}
+.app-shell .chat-stage{overflow:hidden;position:relative}
+.app-shell .jump-latest{bottom:auto!important;top:-46px!important;left:50%!important;transform:translateX(-50%)!important}
