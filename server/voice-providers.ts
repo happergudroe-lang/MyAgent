@@ -8,6 +8,7 @@ const openAiKey = process.env.OPENAI_API_KEY || ''
 const elevenKey = process.env.ELEVENLABS_API_KEY || ''
 const minimaxKey = process.env.MINIMAX_API_KEY || ''
 const fishKey = process.env.FISH_AUDIO_API_KEY || ''
+const minimaxGroupId = process.env.MINIMAX_GROUP_ID || ''
 
 export type VoiceItem = { id: string; name: string; type: 'profile' | 'preset'; language?: string; provider?: string }
 export type VoiceStatus = { provider: VoiceProviderId; providerLabel: string; available: boolean; voices: VoiceItem[]; cloneSupported: boolean; transcribeSupported: boolean; ttsSupported: boolean; error?: string; latencyMs: number; baseUrl?: string }
@@ -57,7 +58,13 @@ export async function getVoiceProviderStatus(): Promise<VoiceStatus> {
       return { provider, providerLabel:labelFor(provider), available:true, voices, cloneSupported:true, transcribeSupported:true, ttsSupported:true, latencyMs:Date.now()-started }
     } catch(error) { return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:true, transcribeSupported:true, ttsSupported:true, error:error instanceof Error?error.message:'ElevenLabs 连接失败', latencyMs:Date.now()-started } }
   }
-  // These providers are deliberately not reported as available until their adapters are implemented.
+  if (provider === 'minimax') {
+    const presets = ['male-qn-jingying','male-qn-qingse','female-shaonv','female-yujie','female-chengshu','female-tianmei','presenter_male','presenter_female','audiobook_male_1','audiobook_female_1']
+    const voices = presets.map(id=>({id,name:id,type:'preset' as const,language:'中文及多语言',provider}))
+    const ready = Boolean(minimaxKey && minimaxGroupId)
+    return { provider, providerLabel:labelFor(provider), available:ready, voices, cloneSupported:false, transcribeSupported:false, ttsSupported:ready, error:ready?undefined:(!minimaxKey?'缺少 MINIMAX_API_KEY。':'缺少 MINIMAX_GROUP_ID。'), latencyMs:Date.now()-started }
+  }
+  // Fish Audio remains unavailable until its account/model management and ASR adapters are configured.
   return { provider, providerLabel:labelFor(provider), available:false, voices:[], cloneSupported:false, transcribeSupported:false, ttsSupported:false, error:labelFor(provider)+' 已预留 Provider 插槽，但当前版本尚未实现 API 适配；不会回退或伪装为可用。', latencyMs:Date.now()-started }
 }
 
@@ -68,6 +75,15 @@ export async function synthesizeVoice(text: string, voiceId: string): Promise<Re
     if (!openAiVoices.includes(voiceId)) throw new Error('所选音色不属于 OpenAI 预设音色。')
     if (text.length > 4096) throw new Error('OpenAI Speech API 单次文本上限为 4096 字符。')
     return request('https://api.openai.com/v1/audio/speech', { method:'POST', headers:{Authorization:'Bearer '+openAiKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.OPENAI_TTS_MODEL||'gpt-4o-mini-tts',voice:voiceId,input:text,instructions:process.env.OPENAI_TTS_INSTRUCTIONS||'Speak naturally and conversationally. Use clear, warm, expressive delivery.',response_format:'mp3'}) }, 180000)
+  }
+  if (provider === 'minimax') {
+    if (!minimaxKey || !minimaxGroupId) throw new Error('MiniMax 需要同时配置 MINIMAX_API_KEY 和 MINIMAX_GROUP_ID。')
+    const response = await request('https://api.minimaxi.com/v1/t2a_v2?GroupId='+encodeURIComponent(minimaxGroupId), { method:'POST', headers:{Authorization:'Bearer '+minimaxKey,'Content-Type':'application/json'}, body:JSON.stringify({model:process.env.MINIMAX_TTS_MODEL||'speech-2.8-turbo',text,stream:false,voice_setting:{voice_id:voiceId,speed:1,vol:1,pitch:0},audio_setting:{sample_rate:32000,bitrate:128000,format:'mp3',channel:1}}) }, 180000)
+    const payload:any = await response.json().catch(()=>({}))
+    if (!response.ok || Number(payload?.base_resp?.status_code||0)!==0) throw new Error(jsonError(payload?.base_resp||payload,'MiniMax TTS 请求失败'))
+    const hex = payload?.data?.audio
+    if (typeof hex !== 'string' || !hex.length) throw new Error('MiniMax 未返回音频数据。')
+    return new Response(Buffer.from(hex,'hex'), { status:200, headers:{'Content-Type':'audio/mpeg'} })
   }
   if (provider === 'elevenlabs') {
     if (!elevenKey) throw missingKey(provider)
